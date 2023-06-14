@@ -1,0 +1,430 @@
+# %%
+import numpy as np
+
+import os
+import os.path
+import sys
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.patches as patches
+
+import warnings
+import pickle
+import time
+import glob
+
+import csv
+
+warnings.simplefilter(action='ignore', category=UserWarning)                                          # suppress warnings related to older versions of some packages that we need to use to run flopy
+warnings.simplefilter(action='ignore', category=RuntimeWarning)                                       # suppress warnings related to older versions of some packages that we need to use to run flopy
+# %%
+start = time.time()
+
+stakeholder='env'                                                                                      # choose from ag/town/env
+stage='combine'                                                                                        # choose from random/reseed/combined/afterdata
+prefix = stakeholder + '_' + stage + '_'      #generates filename prefix
+
+def output_directory():     # use this to define where your output files reside
+    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_output')       # 244 model rerun
+ 
+def figure_directory():     # use this to define where to put your figure files 
+     os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_figures')
+
+def comparison_directory():
+    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_likelihood')
+    
+displaycolumn=40                                                                                       # column for head and drawdown analysis
+displayrow=30                                                                                         # row for head and drawdown analysis
+strdisplaycolumn=35                                                                                   # column for streamflow analysis
+
+minmismatch=0.05                                                                                      # don't consider mismatches that are less than this value - avoids unrealistically high likelihoods
+                                                                                                      # define criteria to meet to qualify as behavioral ... if a model PASSES this test it is behavioral
+in_time_sequence =       [1,1,1]                                                                      # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+in_basis_sequence =      [0,0,1]                                                                      # see list below
+in_comparison_sequence = [1,0,1]                                                                      # 0 = greater than, 1 = less than
+in_limit_sequence =      [2000,10,3]                                                                  # value defining behavioral response
+in_column_sequence =     [15,15,15]                                                                   # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+in_row_sequence =        [15,15,15]                                                                   # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+                  
+behavioral_criteria = [in_time_sequence, in_basis_sequence, in_comparison_sequence, in_limit_sequence, in_column_sequence, in_row_sequence]
+comparison_directory()
+np.save(prefix + 'behavioral_criteria',behavioral_criteria) #save behavioral criteria to a file
+output_directory()
+
+define_mocs = True                                                                                    # define criteria to meet to qualify as an MOC ... if a model PASSES this test it is a model of concern (MOC)
+if stakeholder=='town':
+    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+    moc_basis_sequence =      [4]                                                                       # see list below
+    moc_comparison_sequence = [0]                                                                       # 0 = greater than, 1 = less than
+    moc_limit_sequence =      [0.5]                                                                   # value defining behavioral response
+    moc_column_sequence =     [37]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+    moc_row_sequence =        [20]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+elif stakeholder=='ag':
+    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+    moc_basis_sequence =      [3]                                                                       # see list below
+    moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
+    moc_limit_sequence =      [68]                                                                   # value defining behavioral response
+    moc_column_sequence =     [13]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+    moc_row_sequence =        [11]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+elif stakeholder=='env':
+    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+    moc_basis_sequence =      [2]                                                                       # see list below
+    moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
+    moc_limit_sequence =      [50]                                                                   # value defining behavioral response
+    moc_column_sequence =     [38]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+    moc_row_sequence =        [25]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+    
+# we should add the ability to have an MOC criterion in other than layer 1!!
+# add criterion for flow reduction
+
+#   BASES FOR DETERMINATION OF BEHAVIORAL MODEL
+#       0 = max streamflow along stream
+#       1 = min groundwater depth over first layer
+#       2 = streamflow at specified location
+#       3 = head at specified location
+#       4 = drawdown at specified location
+                                                                                                      # use empty brackets if no data available, each value must contain the same number of inputs, separate multiple data points by commas
+moc_criteria = [moc_time_sequence, moc_basis_sequence, moc_comparison_sequence, moc_limit_sequence, moc_column_sequence, moc_row_sequence]
+comparison_directory()
+np.save(prefix + 'moc_criteria',moc_criteria) #save moc criteria to a file
+output_directory()
+
+read_true_data=True                                                                                   # True to read in the observations from truth_heads_ss_ytna.npy and truth_flows_ss_ytna.npy
+if read_true_data==True:
+    output_directory()
+    trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]
+    trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]
+
+usedata = True                                                                                        # set to true to use available data to calculate likelihoods, false to set models as equally likely
+data_time_sequence = [1,1]                                                                            # 0 = ntna, 1 = ytna, 2 = ytya
+data_basis_sequence =[1,1]                                                                            # identify head or flow observation
+data_layer_sequence = [0,0]                                                                           # layer of head observation - enter zero for flow
+data_column_sequence = [35,20]                                                                         # column of head or flow observation
+data_row_sequence = [20,30]                                                                           # row of head or flow observation
+data_value_sequence = np.zeros((np.shape(data_row_sequence)))
+for ii in np.arange(np.shape(data_row_sequence)[0]):                                                              
+    if data_basis_sequence[ii]==1:
+        data_value_sequence[ii]=trueheads_ss_ytna[data_row_sequence[ii],data_column_sequence[ii]]     # Retrieve head data in top layer from the 'truth' model
+    elif data_basis_sequence[ii]==0:
+        data_value_sequence[ii]=trueflows_ss_ytna[data_column_sequence[ii]][1]                        # Retrieve flow data in stream from the 'truth' model
+        
+#   TYPES OF OBSERVATION DATA CONSIDERED
+#       0 = streamflow at specified location
+#       1 = head at specified location
+
+if usedata==True:
+    num_data=np.shape(data_time_sequence)[0]
+else:
+    num_data=0
+
+eliminate_lowL_models=True                                                                            # True to eliminate low Likelihood models from the ensemble - for now, always set to true, but set number to eliminate to zero to turn off
+lowLcut_percent=10                                                                                    # remove this percent of models with the lowest L values
+lowLcut_number=0                                                                                    # don't remove any more than this number of models, no matter how low their L value, despite above limit
+lowLlimit=0.05                                                                                        # don't remove models with an L higher than this, despite above limits
+lowLecho=True                                                                                         # True to list the low L models, False to suppress (in case you have a lot!)
+
+#Export files needed for multi-stakeholder comparisons:
+#To import, use np.load()
+comparison_directory()               #change directory to current stakeholder and stage
+np.save(prefix + 'data_layer', data_layer_sequence)
+np.save(prefix + 'data_row', data_row_sequence)
+np.save(prefix + 'data_column', data_column_sequence)
+output_directory()
+
+# use the following to control which analyses are completed - may be useful when running partial analyses for many models
+run_sections=3
+
+# 0 = through identifying behavioral models and calculating model likelihoods
+# 1 = identify models of concern
+# 2 - calculate discriminatory index
+# 3 - particle capture
+
+# %%
+#===========READINMODELS FUNCTION==================================================================
+def readInModels():
+    output_directory(); mydir = os.getcwd()             # set the current directory to output folder
+    file_list = glob.glob(mydir + "/m*_parvals")        # only consider output model files
+
+    runnumbers   = []                                   # list to hold model names
+    t_runnumbers = []
+
+    for i in file_list:                                 # loop through file_list
+        i = os.path.basename(i)                         # isolate filename from path
+        if i[16] == '_' and i[16:26] != '_heads_pod':   # only select S.S. models
+            runnumbers.append(i[0:16])
+        elif i[16:26] == '_heads_pod':                  # only select tran models
+            t_runnumbers.append(i[0:16])
+    return runnumbers, t_runnumbers
+'''
+files = os.listdir(os.curdir)
+runnumbers, t_runnumbers = readInModels(files)
+'''
+# %%
+#==========RUN_PARVALS FUNCTION====================================================================
+def run_parvals(runnumbers):
+    Nmodels = np.shape(runnumbers)[0]
+
+    run_params=np.zeros((Nmodels,7))                                                      # prepare an array to store parameter values that differ among model runs
+    for i in np.arange(Nmodels):                                                          # loop over models to read parameter values from parvals file - not used for now, but may be
+        with open (runnumbers[i]+'_parvals', 'rb') as fp:
+            [nrow,ncol,delr,delc,Lx,Ly,nlay,ztop,crop,fNWc,well1,well2,
+             recharge_ratio,return_loc,rNWc, K_horiz, Kzratio_low, Sy, 
+             R1, ET1, ETratio_riparian, Kratio_stream] = pickle.load(fp)
+            run_params[i,0]=K_horiz
+            run_params[i,1]=Kzratio_low
+            run_params[i,2]=Sy
+            run_params[i,3]=R1
+            run_params[i,4]=ET1
+            run_params[i,5]=ETratio_riparian
+            run_params[i,6]=Kratio_stream
+    return run_params, [nrow,ncol,delr,delc,Lx,Ly,nlay,ztop,crop,fNWc,well1,well2,
+            recharge_ratio,return_loc,rNWc, K_horiz, Kzratio_low, Sy, 
+            R1, ET1, ETratio_riparian, Kratio_stream]
+
+
+# %%
+# #====================================================================================
+# files = os.listdir(os.curdir)
+# runnumbers, t_runnumbers = readInModels(files)
+# run_params, [nrow,ncol,delr,delc,Lx,Ly,nlay,ztop,crop,fNWc,well1,well2,
+#             recharge_ratio,return_loc,rNWc, K_horiz, Kzratio_low, Sy, 
+#             R1, ET1, ETratio_riparian, Kratio_stream] = run_parvals(runnumbers)
+# %%
+#============IMPORTMODELRESULTS=======================================================
+def modelResults(runnumbers, ztop, return_loc):
+    Nmodels = len(runnumbers)
+    scenario = ('ntna','ytna','ytya')
+
+    #==================HEADS AND BUDGETS==================================================
+    # initialize arrays to accept all heads for each ss run
+    value = np.zeros((Nmodels,50,50))
+    allheads_ss = dict.fromkeys(scenario,value)
+    # initialize arrays to accept all budgets for each ss run
+    value = np.zeros((Nmodels,16))
+    allbudgets_ss = dict.fromkeys(scenario,value)
+
+    budget=np.zeros((7))
+
+    for s in scenario:
+        for i in range(Nmodels):
+            # use head values from top layer
+            heads=np.load(runnumbers[i]+'_heads_ss_'+s+'.npy')[0][:][:]
+            allheads_ss[s][i][:][:] = heads
+            # record budget values for each scenario
+            budget=np.load(runnumbers[i]+'_budget_ss_'+s+'.npy')
+            for j in np.arange(16):
+                allbudgets_ss[s][i][j]=budget[j][1]
+                
+        # remove the corners as they confused the standard deviation calculation
+        allheads_ss[s][allheads_ss[s]<0]=0
+
+    # budget components are:
+    # 0: STORAGE_IN         4: RECHARGE_IN          8: CONSTANT_HEAD_OUT    12: STREAM_LEAKAGE_OUT
+    # 1: CONSTANT_HEAD_IN   5: STREAM_LEAKAGE_IN    9: WELLS_OUT            13: TOTAL_OUT
+    # 2: WELLS_IN           6: TOTAL_IN             10: ET_OUT              14: IN-OUT
+    # 3: ET_IN              7: STORAGE_OUT          11: RECHARGE_OUT        15: PERCENT_DISCREPANCY
+
+    #==================DEPTH TO WATER TABLE===================================
+    value = np.zeros((Nmodels,50,50)) # (100 x 50 x 50)
+    alldwt_ss = dict.fromkeys(scenario,value)
+    value = np.zeros(Nmodels)
+    maxdwt_ss = dict.fromkeys(scenario,value)
+
+    for s in scenario:
+        for i in np.arange(Nmodels):
+            tempvar=allheads_ss[s][i,:,:]-ztop
+            alldwt_ss[s][i,:,:]=tempvar
+            maxdwt_ss[s][i]=np.max(tempvar)
+
+    #==================DRAWDOWN===============================================
+    # define drawdown for each model at each location in top layer from ytna and ytya
+    dd=allheads_ss['ytna']-allheads_ss['ytya']                                                                 
+
+    #==================FLOWS==================================================
+    value = np.zeros((Nmodels,49))
+    allflows_ss = dict.fromkeys(scenario,value)
+
+    for s in scenario:
+        for i in range(Nmodels):
+            flows=np.load(runnumbers[i]+'_strflow_ss_'+s+'.npy')
+            flow = []
+            for tup in range(len(flows)):
+                flow.append(flows[tup][1])
+            allflows_ss[s][i][:][:] = flow
+            # remove reach used as canal to return town water to stream
+            np.delete(allflows_ss[s], return_loc, axis=1)
+
+    #==================LEAKAGE================================================
+    scenario = ('ntna','ytna','ytya')
+    value    = np.zeros((Nmodels,49))
+    allleaks_ss = dict.fromkeys(scenario,value)
+
+    for s in scenario:
+        for i in range(Nmodels):
+            leaks=np.load(runnumbers[i]+'_strleak_ss_'+s+'.npy')
+            leak = []
+            for tup in range(len(leaks)):
+                leak.append(leaks[tup][1])
+            allleaks_ss[s][i][:][:] = leak
+
+    #===================PARTICLE TRACKING======================================
+    # read this file to set dimensions of arrays in next lines
+    testepts=np.load(runnumbers[0]+'_epts_ss_ytna.npy')
+
+    # initialize arrays to accept all particle data for each ss run
+    allepts_ss_ntna=np.zeros((np.shape(runnumbers)[0],np.shape(testepts)[0],np.shape(testepts)[1]))       
+    allepts_ss_ytna=np.zeros((np.shape(runnumbers)[0],np.shape(testepts)[0],np.shape(testepts)[1]))     
+    allepts_ss_ytya=np.zeros((np.shape(runnumbers)[0],np.shape(testepts)[0],np.shape(testepts)[1]))     
+
+    counter=-1
+    for i in runnumbers:                                       
+        counter=counter+1                               # count the models as loaded to form joint array with all models' results
+
+        epts=np.load(i+'_epts_ss_ntna.npy')             # load output for each model in ensemble
+        for j in np.arange(np.shape(testepts)[0]):      
+            allepts_ss_ntna[counter,j,0]=epts[j][8]     # start point column (all particles assumed to start in top layer, as recharge)
+            allepts_ss_ntna[counter,j,1]=epts[j][7]     # start point row 
+            allepts_ss_ntna[counter,j,2]=epts[j][20]    # end point column 
+            allepts_ss_ntna[counter,j,3]=epts[j][19]    # end point row 
+            allepts_ss_ntna[counter,j,4]=epts[j][4]     # end point time 
+
+        epts=np.load(i+'_epts_ss_ytna.npy')  
+        for j in np.arange(np.shape(testepts)[0]):
+            allepts_ss_ytna[counter,j,0]=epts[j][8]            
+            allepts_ss_ytna[counter,j,1]=epts[j][7]            
+            allepts_ss_ytna[counter,j,2]=epts[j][20]           
+            allepts_ss_ytna[counter,j,3]=epts[j][19]           
+            allepts_ss_ytna[counter,j,4]=epts[j][4]
+
+        epts=np.load(i+'_epts_ss_ytya.npy')  
+        for j in np.arange(np.shape(testepts)[0]):
+            allepts_ss_ytya[counter,j,0]=epts[j][8]            
+            allepts_ss_ytya[counter,j,1]=epts[j][7]            
+            allepts_ss_ytya[counter,j,2]=epts[j][20]           
+            allepts_ss_ytya[counter,j,3]=epts[j][19]          
+            allepts_ss_ytya[counter,j,4]=epts[j][4]       
+
+    # clear temporary variables
+    del heads                                                                                            
+    del tempvar
+    del flow
+    del flows
+    del leak
+    del leaks
+    del testepts
+    del counter
+    del epts
+
+    # return [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna,
+    #         allbudgets_ss_ytna, allbudgets_ss_ytya, allepts_ss_ntna, allepts_ss_ytna,
+    #         allepts_ss_ytya]
+    return [allheads_ss, allbudgets_ss, alldwt_ss, allflows_ss, allleaks_ss, maxdwt_ss,
+            allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
+
+# %%
+# [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna, 
+#  allbudgets_ss_ytna, allbudgets_ss_ytya, allepts_ss_ntna, allepts_ss_ytna,
+#  allepts_ss_ytya] = modelResults(runnumbers)
+
+# %%
+scenario = ('ntna','ytna','ytya')
+Nmodels = 100
+
+
+
+
+# %%
+def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
+    global num_criteria
+
+    Nmodels = np.shape(runnumbers)[0]
+
+    cullmodels=np.zeros((Nmodels,50))                   # store values used to assess (non)behavioural and likelihood to check process
+    cullmodels_counter=-1
+
+    # determine number of criteria to that have been applied
+    if 'in_time_sequence' in globals():
+        num_criteria=np.shape(in_time_sequence)[0]
+
+    if num_criteria>0:
+        print('Assessing (non)behavioral criteria')
+        
+        # loop over bases for discrimination of models of concern or (non)behavioral models
+        for ii in np.arange(num_criteria):              
+            cullmodels_counter += 1
+            print('Assessing criterion',ii)
+            in_time=in_time_sequence[ii]
+            in_basis=in_basis_sequence[ii]
+            in_comparison=in_comparison_sequence[ii]
+            in_limit=in_limit_sequence[ii]
+            in_column=in_column_sequence[ii]
+            in_row=in_row_sequence[ii]
+
+            if in_basis==0:
+                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))
+                if in_time==0:
+                    in_metric=np.max(allflows_ss['ntna'],axis=1)            # store maximum flow for each model for ntna case
+                elif in_time==1:
+                    in_metric=np.max(allflows_ss['ytna'],axis=1)            # store maximum flow for each model for ytna case
+                else:
+                    in_metric=np.max(allflows_ss['ytya'],axis=1)            # store maximum flow for each model for ytya case
+            elif in_basis==1:
+                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))     
+                if in_time==0:
+                    in_metric=maxdwt_ss['ntna']                             # store minimum flow for each model for ntna case
+                elif in_time==1:
+                    in_metric=maxdwt_ss['ytna']                             # store minimum flow for each model for ytna case
+                else:
+                    in_metric=in_metric=maxdwt_ss['ytya']                   # store minimum flow for each model for ytya case
+            elif in_basis==2:
+                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))     
+                if in_time==0:
+                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
+                        in_metric[j]=allflows_ss['ntna'][j][in_column]      # store flow at specified location for each model for ntna case
+                elif in_time==1:
+                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
+                        in_metric[j]=allflows_ss['ytna'][j][in_column]      # store flow at specified location for each model for ntna case
+                else:
+                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
+                        in_metric[j]=allflows_ss['ytya'][j][in_column]      # store flow at specified location for each model for ntna case
+            elif in_basis==3:
+                in_metric=np.zeros((np.shape(allheads_ss['ntna'])[0]))     
+                if in_time==0:
+                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
+                        in_metric[j]=allheads_ss['ntna'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
+                elif in_time==1:
+                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
+                        in_metric[j]=allheads_ss['ytna'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
+                else:
+                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
+                        in_metric[j]=allheads_ss['ytya'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
+            else:
+                in_metric=np.zeros((np.shape(dd)[0]))     
+                if in_time==0:
+                    for j in np.arange(np.shape(dd)[0]):                
+                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
+                elif in_time==1:
+                    for j in np.arange(np.shape(dd)[0]):                
+                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
+                else:
+                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
+                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
+
+            cullmodels[:,cullmodels_counter]=in_metric                      # store data used to check (non)behavioral status
+
+        del num_criteria                                                    # clear temporary variables
+        del in_time
+        del in_basis
+        del in_comparison
+        del in_limit
+        del in_column
+        del in_row
+        del in_metric
+
+    else:
+        print('No (non)behavioral criteria listed')
+
+    return cullmodels, cullmodels_counter
+    
