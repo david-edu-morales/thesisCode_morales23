@@ -298,7 +298,7 @@ def modelResults(runnumbers, ztop, return_loc):
         scenario_leakage.append(leak_arr)
     # compile results into dictionary
     allleaks_ss = dict(zip(scenario, scenario_leakage))
-    
+
     #===================PARTICLE TRACKING======================================
     # read this file to set dimensions of arrays in next lines
     testepts=np.load(runnumbers[0]+'_epts_ss_ytna.npy')
@@ -347,30 +347,14 @@ def modelResults(runnumbers, ztop, return_loc):
     del counter
     del epts
 
-        # return [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna,
-    #         allbudgets_ss_ytna, allbudgets_ss_ytya, allepts_ss_ntna, allepts_ss_ytna,
-    #         allepts_ss_ytya]
-    # return [allheads_ss, allbudgets_ss, alldwt_ss, allflows_ss, allleaks_ss, maxdwt_ss,
-    #         allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
     return [allheads_ss, allbudgets_ss, alldwt_ss, allflows_ss, allleaks_ss, maxdwt_ss,
                 allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
 
 # %%
-# [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna, 
-#  allbudgets_ss_ytna, allbudgets_ss_ytya, allepts_ss_ntna, allepts_ss_ytna,
-#  allepts_ss_ytya] = modelResults(runnumbers)
-
-# %%
-scenario = ('ntna','ytna','ytya')
-Nmodels = 100
-
-
-
-
-# %%
 def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
     global num_criteria
-    global scenario
+    scenario = ('ntna', 'ytna', 'ytya')
+
 
     Nmodels = np.shape(runnumbers)[0]
 
@@ -445,3 +429,31 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
 
     return cullmodels, cullmodels_counter
     
+# %%
+def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_data, allflows_ss, allheads_ss, scenario, Nmodels, prefix):
+    startdata = cullmodels_counter + 1
+    holdfordataworth=np.zeros((num_data,Nmodels))
+    if num_data > 0:
+        for jj in range(Nmodels):
+            for ii in range(num_data):
+                in_basis = dict_L_criteria['basis'][ii]
+                in_row   = dict_L_criteria['row'][ii]
+                in_col   = dict_L_criteria['column'][ii]
+                # establish the time sequence (scenario) for each criterion
+                in_time  = dict_L_criteria['time'][ii]
+                s = scenario[in_time]                   # set value for scenario ('ntna','ytna','ytya')
+
+                if in_basis == 0:
+                    data2check = allflows_ss[s][jj][in_row][in_col]
+                else:
+                    data2check = allheads_ss[s][jj][in_row][in_col]
+
+                cullmodels[jj, cullmodels_counter+1+ii] = data2check
+                holdfordataworth[ii,jj] = data2check
+        np.save(prefix + 'holdfordataworth', holdfordataworth)
+        
+    else:
+        dummy = 0
+        del dummy
+    
+    return startdata, cullmodels, cullmodels_counter
