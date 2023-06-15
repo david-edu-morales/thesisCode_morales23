@@ -1,5 +1,6 @@
 # %%
 import numpy as np
+import pandas as pd
 
 import os
 import os.path
@@ -197,28 +198,34 @@ def modelResults(runnumbers, ztop, return_loc):
     Nmodels = len(runnumbers)
     scenario = ('ntna','ytna','ytya')
 
-    #==================HEADS AND BUDGETS==================================================
+    #==================H E A D S=====================================================
     # initialize arrays to accept all heads for each ss run
-    value = np.zeros((Nmodels,50,50))
-    allheads_ss = dict.fromkeys(scenario,value)
-    # initialize arrays to accept all budgets for each ss run
-    value = np.zeros((Nmodels,16))
-    allbudgets_ss = dict.fromkeys(scenario,value)
-
-    budget=np.zeros((7))
-
+    scenario_list = []
     for s in scenario:
+        heads_arr = np.zeros((Nmodels, 50, 50))
         for i in range(Nmodels):
             # use head values from top layer
-            heads=np.load(runnumbers[i]+'_heads_ss_'+s+'.npy')[0][:][:]
-            allheads_ss[s][i][:][:] = heads
-            # record budget values for each scenario
+            heads = np.load(runnumbers[i]+'_heads_ss_'+s+'.npy')[0,:,:]
+            heads_arr[i] = heads
+        scenario_list.append(heads_arr)
+
+    allheads_ss = dict(zip(scenario, scenario_list))    # compile list into dictionary
+
+    # remove the corners as they confused the standard deviation calculation
+    allheads_ss[s][allheads_ss[s]<0]=0
+
+    #===================B U D G E T S===============================================
+    # initialize arrays to accept all budgets for each ss run
+    scenario_list = []
+    for s in scenario:
+        budget_arr = np.zeros((Nmodels, 16))
+        for i in range(Nmodels):
             budget=np.load(runnumbers[i]+'_budget_ss_'+s+'.npy')
-            for j in np.arange(16):
-                allbudgets_ss[s][i][j]=budget[j][1]
-                
-        # remove the corners as they confused the standard deviation calculation
-        allheads_ss[s][allheads_ss[s]<0]=0
+            for j in range(16):
+                budget_arr[i][j] = budget[j][1]
+        scenario_list.append(budget_arr)
+
+    allbudgets_ss = dict(zip(scenario,scenario_list))              
 
     # budget components are:
     # 0: STORAGE_IN         4: RECHARGE_IN          8: CONSTANT_HEAD_OUT    12: STREAM_LEAKAGE_OUT
@@ -227,37 +234,44 @@ def modelResults(runnumbers, ztop, return_loc):
     # 3: ET_IN              7: STORAGE_OUT          11: RECHARGE_OUT        15: PERCENT_DISCREPANCY
 
     #==================DEPTH TO WATER TABLE===================================
-    value = np.zeros((Nmodels,50,50)) # (100 x 50 x 50)
-    alldwt_ss = dict.fromkeys(scenario,value)
-    value = np.zeros(Nmodels)
-    maxdwt_ss = dict.fromkeys(scenario,value)
-
+    scenario_dwt = []; scenario_maxdwt = []
     for s in scenario:
+        # initialize arrays to receive water table depth values
+        dwt_arr = np.zeros((Nmodels,50,50)); maxdwt_arr = np.zeros(Nmodels)
+        # loop through all models to calculate depth to water table
         for i in np.arange(Nmodels):
-            tempvar=allheads_ss[s][i,:,:]-ztop
-            alldwt_ss[s][i,:,:]=tempvar
-            maxdwt_ss[s][i]=np.max(tempvar)
+            tempvar = allheads_ss[s][i,:,:]-ztop
+            dwt_arr[i] = tempvar
+            maxdwt_arr[i] = np.max(tempvar)
+        # append array of recorded values to list, ordered by scenario
+        scenario_dwt.append(dwt_arr); scenario_maxdwt.append(maxdwt_arr)
 
-    #==================DRAWDOWN===============================================
+    # compile results into dictionaries
+    alldwt_ss = dict(zip(scenario, scenario_dwt)); maxdwt_ss = dict(zip(scenario, scenario_maxdwt))
+
+    #==================D R A W D O W N========================================
     # define drawdown for each model at each location in top layer from ytna and ytya
     dd=allheads_ss['ytna']-allheads_ss['ytya']                                                                 
 
-    #==================FLOWS==================================================
-    value = np.zeros((Nmodels,49))
-    allflows_ss = dict.fromkeys(scenario,value)
-
+    #==================F L O W S==============================================
+    scenario_flows = []
     for s in scenario:
+        # initialize array to receive flow values
+        flow_arr = np.zeros((Nmodels, 49))
+        # loop through all models to extract data from files
         for i in range(Nmodels):
-            flows=np.load(runnumbers[i]+'_strflow_ss_'+s+'.npy')
+            flows = np.load(runnumbers[i]+'_strflow_ss_'+s+'.npy')
             flow = []
             for tup in range(len(flows)):
                 flow.append(flows[tup][1])
-            allflows_ss[s][i][:][:] = flow
-            # remove reach used as canal to return town water to stream
-            np.delete(allflows_ss[s], return_loc, axis=1)
-
+            flow_arr[i] = flow
+        flow_arr = np.delete(flow_arr, return_loc, axis=1)
+        # append array of recorded flows to list, ordered by scenario
+        scenario_flows.append(flow_arr)
+    #compile results into dictionary
+    allflows_ss = dict(zip(scenario, scenario_flows))
+        
     #==================LEAKAGE================================================
-    scenario = ('ntna','ytna','ytya')
     value    = np.zeros((Nmodels,49))
     allleaks_ss = dict.fromkeys(scenario,value)
 
@@ -269,6 +283,22 @@ def modelResults(runnumbers, ztop, return_loc):
                 leak.append(leaks[tup][1])
             allleaks_ss[s][i][:][:] = leak
 
+    scenario_leakage = []
+    for s in scenario:
+        # initialize array to receive leakage values
+        leak_arr = np.zeros((Nmodels,49))
+        # loop through all models to extract data from files
+        for i in range(Nmodels):
+            leaks = np.load(runnumbers[i]+'_strleak_ss_'+s+'.npy')
+            leak = []
+            for tup in range(len(leaks)):
+                leak.append(leaks[tup][1])
+            leak_arr[i] = leak
+        # append array of recorded leaks to list, ordered by scenario
+        scenario_leakage.append(leak_arr)
+    # compile results into dictionary
+    allleaks_ss = dict(zip(scenario, scenario_leakage))
+    
     #===================PARTICLE TRACKING======================================
     # read this file to set dimensions of arrays in next lines
     testepts=np.load(runnumbers[0]+'_epts_ss_ytna.npy')
@@ -317,11 +347,13 @@ def modelResults(runnumbers, ztop, return_loc):
     del counter
     del epts
 
-    # return [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna,
+        # return [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna,
     #         allbudgets_ss_ytna, allbudgets_ss_ytya, allepts_ss_ntna, allepts_ss_ytna,
     #         allepts_ss_ytya]
+    # return [allheads_ss, allbudgets_ss, alldwt_ss, allflows_ss, allleaks_ss, maxdwt_ss,
+    #         allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
     return [allheads_ss, allbudgets_ss, alldwt_ss, allflows_ss, allleaks_ss, maxdwt_ss,
-            allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
+                allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
 
 # %%
 # [allheads_ss_ntna, allheads_ss_ytna, allheads_ss_ytya, allbudgets_ss_ntna, 
@@ -338,6 +370,7 @@ Nmodels = 100
 # %%
 def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
     global num_criteria
+    global scenario
 
     Nmodels = np.shape(runnumbers)[0]
 
@@ -350,67 +383,51 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
 
     if num_criteria>0:
         print('Assessing (non)behavioral criteria')
-        
+
         # loop over bases for discrimination of models of concern or (non)behavioral models
-        for ii in np.arange(num_criteria):              
+        for ii in np.arange(num_criteria):          
             cullmodels_counter += 1
             print('Assessing criterion',ii)
+
+            # establish the time sequence (scenario) for each criterion
             in_time=in_time_sequence[ii]
-            in_basis=in_basis_sequence[ii]
+            s = scenario[in_time]           # set value for scenario ('ntna','ytna','ytya')
+
+            # set criteria values for basis for consideration, greater/less than, and value limit
+            in_basis=in_basis_sequence[ii] 
             in_comparison=in_comparison_sequence[ii]
             in_limit=in_limit_sequence[ii]
+
+            # set column and row values for observation
             in_column=in_column_sequence[ii]
             in_row=in_row_sequence[ii]
 
-            if in_basis==0:
-                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))
-                if in_time==0:
-                    in_metric=np.max(allflows_ss['ntna'],axis=1)            # store maximum flow for each model for ntna case
-                elif in_time==1:
-                    in_metric=np.max(allflows_ss['ytna'],axis=1)            # store maximum flow for each model for ytna case
-                else:
-                    in_metric=np.max(allflows_ss['ytya'],axis=1)            # store maximum flow for each model for ytya case
-            elif in_basis==1:
-                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))     
-                if in_time==0:
-                    in_metric=maxdwt_ss['ntna']                             # store minimum flow for each model for ntna case
-                elif in_time==1:
-                    in_metric=maxdwt_ss['ytna']                             # store minimum flow for each model for ytna case
-                else:
-                    in_metric=in_metric=maxdwt_ss['ytya']                   # store minimum flow for each model for ytya case
-            elif in_basis==2:
-                in_metric=np.zeros((np.shape(allflows_ss['ntna'])[0]))     
-                if in_time==0:
-                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
-                        in_metric[j]=allflows_ss['ntna'][j][in_column]      # store flow at specified location for each model for ntna case
-                elif in_time==1:
-                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
-                        in_metric[j]=allflows_ss['ytna'][j][in_column]      # store flow at specified location for each model for ntna case
-                else:
-                    for j in np.arange(np.shape(allflows_ss['ytna'])[0]):                
-                        in_metric[j]=allflows_ss['ytya'][j][in_column]      # store flow at specified location for each model for ntna case
-            elif in_basis==3:
-                in_metric=np.zeros((np.shape(allheads_ss['ntna'])[0]))     
-                if in_time==0:
-                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
-                        in_metric[j]=allheads_ss['ntna'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
-                elif in_time==1:
-                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
-                        in_metric[j]=allheads_ss['ytna'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
-                else:
-                    for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
-                        in_metric[j]=allheads_ss['ytya'][j][in_row][in_column]  # store flow at specified location for each model for ntna case
+            if in_basis==0:                                         # store maximum flow for each model
+                in_metric=np.zeros((np.shape(allflows_ss[s])[0]))
+                in_metric=np.max(allflows_ss[s], axis=1)
+
+            elif in_basis==1:                                       # store minimum flow for each model
+                in_metric=np.zeros((np.shape(allflows_ss[s])[0]))  
+                in_metric=maxdwt_ss[s]
+
+            elif in_basis==2:                                       # store flow at specified location for each model
+                in_metric=np.zeros((np.shape(allflows_ss[s])[0]))    
+                for j in np.arange(np.shape(allflows_ss[s])[0]):
+                    in_metric[j]=allflows_ss[s][j][in_column]
+
+            elif in_basis==3:                                       # store flow at specified location for each model
+                in_metric=np.zeros((np.shape(allheads_ss[s])[0]))
+                for j in np.arange(np.shape(allheads_ss[s])[0]):
+                    in_metric[j]=allheads_ss[s][j][in_row][in_column]
+
             else:
-                in_metric=np.zeros((np.shape(dd)[0]))     
-                if in_time==0:
+                in_metric=np.zeros((np.shape(dd)[0]))               # store flow at specified location for each model
+                if in_time<=1:
                     for j in np.arange(np.shape(dd)[0]):                
-                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
-                elif in_time==1:
-                    for j in np.arange(np.shape(dd)[0]):                
-                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
+                        in_metric[j]=dd[j][in_row][in_column]               
                 else:
                     for j in np.arange(np.shape(allheads_ss['ytna'])[0]):                
-                        in_metric[j]=dd[j][in_row][in_column]               # store flow at specified location for each model for ntna case
+                        in_metric[j]=dd[j][in_row][in_column]
 
             cullmodels[:,cullmodels_counter]=in_metric                      # store data used to check (non)behavioral status
 
