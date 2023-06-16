@@ -431,25 +431,28 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
     
 # %%
 def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_data, allflows_ss, allheads_ss, scenario, Nmodels, prefix):
-    startdata = cullmodels_counter + 1
-    holdfordataworth=np.zeros((num_data,Nmodels))
+    startdata = cullmodels_counter + 1                                  # start of data for likelihood estimation
+    holdfordataworth=np.zeros((num_data,Nmodels))                       # array to hold comparison values
     if num_data > 0:
+        # Loop through all models to determine extract comparison value to evaluate model likelihood
         for jj in range(Nmodels):
+            # Loop through all evaluation options
             for ii in range(num_data):
-                in_basis = dict_L_criteria['basis'][ii]
-                in_row   = dict_L_criteria['row'][ii]
-                in_col   = dict_L_criteria['column'][ii]
-                # establish the time sequence (scenario) for each criterion
-                in_time  = dict_L_criteria['time'][ii]
-                s = scenario[in_time]                   # set value for scenario ('ntna','ytna','ytya')
-
-                if in_basis == 0:
+                in_basis = dict_L_criteria['basis'][ii]                 # basis for determining Likelihood
+                in_row   = dict_L_criteria['row'][ii]                   # cell row for comparison
+                in_col   = dict_L_criteria['column'][ii]                # cell column for comparison
+                in_time  = dict_L_criteria['time'][ii]                  # time sequence (scenario) for criterion
+                s = scenario[in_time]                                   # set value for scenario ('ntna','ytna','ytya')
+                # extract comparison value based on basis (flow/head)
+                if in_basis == 0:                                       # streamflow, basis = 0
                     data2check = allflows_ss[s][jj][in_row][in_col]
-                else:
+                else:                                                   # head, basis = 1
                     data2check = allheads_ss[s][jj][in_row][in_col]
-
-                cullmodels[jj, cullmodels_counter+1+ii] = data2check
+                # append comparison value according to above criteria to cullmodels array
+                cullmodels[jj, startdata+ii] = data2check
+                # record comparison value to array
                 holdfordataworth[ii,jj] = data2check
+        # save array of recorded comparison values
         np.save(prefix + 'holdfordataworth', holdfordataworth)
         
     else:
