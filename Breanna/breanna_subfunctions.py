@@ -460,3 +460,28 @@ def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_d
         del dummy
     
     return startdata, cullmodels, cullmodels_counter
+
+# %%
+#==================U S E  T R U E  D A T A===============================================
+def useTrueData(dict_L_criteria):
+    # set up variable values
+    Ncomparisons = len(dict_L_criteria['time'])     # determine number of comparisons
+    data_basis   = dict_L_criteria['basis']         # basis for comparison (0: streamflow, 1: head)
+    data_row     = dict_L_criteria['row']           # cell row for comparison value 
+    data_column  = dict_L_criteria['column']        # cell column for comparison value
+    # switch to output directory to interact with truth model files
+    output_directory()
+    # set truth model values to objects
+    trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]           # load truth heads file
+    trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]               # load truth flows file 
+    # create awwary to record truth values                                      
+    data_value = np.zeros(Ncomparisons)                                                           
+    # Record truth value for each comparison depending on basis
+    for ii in range(Ncomparisons):                                                              
+        if data_basis[ii] == 1:
+            data_value[ii]=trueheads_ss_ytna[data_row[ii],data_column[ii]]     # Retrieve head data in top layer from the 'truth' model
+        elif data_basis[ii] == 0:
+            data_value[ii]=trueflows_ss_ytna[data_column[ii]][1]               # Retrieve flow data in stream from the 'truth' model
+    
+    return data_value, Ncomparisons
+
