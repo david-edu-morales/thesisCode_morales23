@@ -636,9 +636,21 @@ def behaviorStats (modelBehavior, runnumbers, dict_B_criteria, cullmodels, Nmode
                 nonb_varid[i-9]  = np.std(tempvar)
             nonb_meanid = np.round(nonb_meanid*1000)/1000
             nonb_varid  = np.round(nonb_varid*1000)/1000
+
+            # pack (non)behavioral statistics into dictionary for ease of recall
+            stats = [b_meanid, b_varid, nonb_meanid, nonb_varid]
+            keys  = ['b_mean', 'b_var', 'nonb_mean', 'nonb_var']
+            dict_B_stats = dict(zip(keys, stats))
+            # pack plotting information into dictionary for ease of recall
+            hold_list = [holdplotx, holdploty, holdleftlimit, holdrightlimit, holdplottype]
+            plot_keys = ['x', 'y', 'l_limit', 'r_limit', 'type']
+            dict_plotHolds = dict(zip(plot_keys, hold_list))
+
         else:
             print('All models are behavioral')
     else:
         print('No (non)behavioral criteria listed.')
+
+
     
-    return b_meanid, b_varid, nonb_meanid, nonb_varid
+    return dict_B_stats, dict_plotHolds
