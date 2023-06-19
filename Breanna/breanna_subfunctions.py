@@ -571,6 +571,74 @@ def modelBehavior(runnumbers, rmse):
     behavioral_models = runnumbers_arr[behavioral_mask].tolist()
     nonbehavioral_models = runnumbers_arr[nonbehavioral_mask].tolist()
 
-    return behavioral_idx, behavioral_models, nonbehavioral_idx, nonbehavioral_models
+    return [behavioral_idx, behavioral_models, nonbehavioral_idx, nonbehavioral_models]
 
 # %%
+#==================B E H A V I O R  S T A T I S T I C S==================================
+def behaviorStats (modelBehavior, runnumbers, dict_B_criteria, cullmodels, Nmodels):
+    counter = -1
+    # store values for later plotting
+    holdplotx=[]; holdploty=[]
+    holdleftlimit=[]; holdrightlimit=[]; holdplottype=[]
+    # determine number of criteria that have been applied
+    num_criteria = len(dict_B_criteria['time'])
+    # unpack list of model idx and names
+    behavioral_idx    = modelBehavior[0]; behavioral_models = modelBehavior[1]
+    nonbehavioral_idx = modelBehavior[2]; nonbehavioral_models = modelBehavior[3]
+
+    if num_criteria > 0:
+        # loop over bases for discrimination of MOCs or (non)behavioral models
+        for ii in range(num_criteria):
+            in_comparison = dict_B_criteria['comparison'][ii]
+            # sort metric in decreasing order for plotting
+            sorted_in_metric = np.sort(cullmodels[:,ii])[::-1]
+
+            # save results to plot later
+            plottype = 0; holdplottype.append(plottype)     # distinguish behavioral (0) and MOC (1) plots
+            x_range = np.arange(Nmodels)                    # store ordinal numbers from 0 to Nmodels
+            holdplotx.append(x_range)
+            holdploty.append(sorted_in_metric)              # hold sorted values of the metric used for assessment, H to L
+            # store x & y positions for plotting limits
+            if in_comparison == 0:                          # 'greater than' indicates behavioral
+                holdleftlimit.append(len(behavioral_idx))
+                holdrightlimit.append(Nmodels)
+            elif in_comparison == 1:                        # 'less than' indicates behavioral
+                holdleftlimit.append(0)
+                holdrightlimit.append(Nmodels-len(behavioral_idx))
+        # assess prevalance of each parameter for 'in' and 'not in' groups
+        if len(nonbehavioral_idx) > 0:
+            tempvar = []
+            b_meanid = np.zeros(7); b_varid  = np.zeros(7)
+            # count over variable parameter positions, 9 through 15
+            for i in np.arange(9,16):
+                # temporary variable to hold values for a single parameter
+                tempvar = np.zeros(len(behavioral_idx))
+                counter = -1
+                # record parameter value for each behavioral model
+                for j in behavioral_idx:
+                    counter += 1
+                    # extract parameter value from model name (str)
+                    tempvar[counter] = int(runnumbers[j][i])
+                # calculate the mean of the parameter values from behavioral models
+                b_meanid[i-9] = np.mean(tempvar)
+                # calculate the STD of the parameter values from behavioral models
+                b_varid[i-9]  = np.std(tempvar)
+            # repeat above process for nonbehavioral models
+            tempvar = []
+            nonb_meanid = np.zeros(7); nonb_varid  = np.zeros(7)
+            for i in np.arange(9,16):
+                tempvar = np.zeros(len(nonbehavioral_idx))
+                counter = -1
+                for j in nonbehavioral_idx:
+                    counter += 1
+                    tempvar[counter] = int(runnumbers[j][i])
+                nonb_meanid[i-9] = np.mean(tempvar)
+                nonb_varid[i-9]  = np.std(tempvar)
+            nonb_meanid = np.round(nonb_meanid*1000)/1000
+            nonb_varid  = np.round(nonb_varid*1000)/1000
+        else:
+            print('All models are behavioral')
+    else:
+        print('No (non)behavioral criteria listed.')
+    
+    return b_meanid, b_varid, nonb_meanid, nonb_varid
