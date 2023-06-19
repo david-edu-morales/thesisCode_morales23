@@ -505,7 +505,7 @@ def assess_nonBehavioral(dict_B_criteria, rmse, cullmodels):
     return rmse
 
 # %%
-#===========================================================================
+#==================C A L C U L A T E  M O D E L  L I K E L I H O O D=====================
 def calculateModelLikelihood(dict_B_criteria, truth_value, cullmodels, cullmodels_counter, num_L_criteria, startdata, Nmodels, useTrueData_flag):
     rmse=np.zeros(Nmodels)                  # use model rmse to flag nonbehavioral models below
     L = 1/Nmodels                           # set likelihoods equal by default, keep if there are no data to compare
@@ -555,3 +555,22 @@ def calculateModelLikelihood(dict_B_criteria, truth_value, cullmodels, cullmodel
     sorted_L_behavioral=np.sort(L)[::-1]
 
     return rmse, cullmodels_counter, cullmodels, L, sorted_L_behavioral
+
+# %%
+#==================M O D E L  B E H A V I O R============================================
+def modelBehavior(runnumbers, rmse):
+    # convert list of model names into an array for masking
+    runnumbers_arr = np.array(runnumbers)
+    # boolean masks for (non)behavioral lists
+    behavioral_mask    = np.ma.less(rmse, 1.2345e9)
+    nonbehavioral_mask = np.ma.greater_equal(rmse, 1.2345e9)
+    # lists of indices for (non)behavioral models
+    behavioral_idx    = np.where(behavioral_mask)[0].tolist()
+    nonbehavioral_idx = np.where(nonbehavioral_mask)[0].tolist()
+    # lists of (non)behavioral model names
+    behavioral_models = runnumbers_arr[behavioral_mask].tolist()
+    nonbehavioral_models = runnumbers_arr[nonbehavioral_mask].tolist()
+
+    return behavioral_idx, behavioral_models, nonbehavioral_idx, nonbehavioral_models
+
+# %%
