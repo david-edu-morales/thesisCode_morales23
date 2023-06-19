@@ -911,3 +911,213 @@ def Lstats(Lin,datain):
     del tempstdmatrix
     
     return tempout
+
+# %%
+def run_Lstats(L, allheads_ss, allflows_ss, allleaks_ss, dd, scenario, Lstat_flag, mocBehavior, Nmodels):
+    bestmodels=np.argsort(-L)
+    MLmodelID=bestmodels[0]
+
+    moc_idx = mocBehavior[0]
+    nonmoc_idx = mocBehavior[2]
+
+    # Set screen to all models for all instances
+    if Lstat_flag == 0:
+        screen = np.arange(Nmodels)
+    # When run_sections = 0, the script should only calculate Lstats for models, not MOCs. This resets screen to MOC indices
+    elif Lstat_flag > 0:
+        screen = moc_idx
+    # Re-run this function when testing for MOCs, but the screen now looks at non-MOC models
+    elif Lstat_flag < 0:
+        screen = nonmoc_idx
+
+    list_headmeans = []; list_headvar = []; list_headML = []
+    list_flowmeans = []; list_flowvar = []; list_flowML = []
+    list_leakmeans = []; list_leakvar = []; list_leakML = []
+    # step through scenarios ('ntna', 'ytna', 'ytya')
+    for s in scenario:
+        # calculate the likelihood statistics across models for specified scenario (HEAD)
+        tempout_head = Lstats(L[screen], allheads_ss[s][screen])
+        # assign the statistics 
+        temp_headmeans = tempout_head[0]          ; list_headmeans.append(temp_headmeans)
+        temp_headvar   = tempout_head[1]          ; list_headvar.append(temp_headvar)
+        temp_headML    = allheads_ss[s][MLmodelID]; list_headML.append(temp_headML)
+        # calculate the likelihood statistics across models for specified scenario (FLOW)
+        tempout_flow = Lstats(L[screen], allflows_ss[s][screen])
+        # assign statistics
+        temp_flowmeans = tempout_flow[0]          ; list_flowmeans.append(temp_flowmeans)
+        temp_flowvar   = tempout_flow[1]          ; list_flowvar.append(temp_flowvar)
+        temp_flowML    = allflows_ss[s][MLmodelID]; list_flowML.append(temp_flowML)
+        # calculate the likelihood statistics across models for specified scenario (LEAK)
+        tempout_leak = Lstats(L[screen], allleaks_ss[s][screen])
+        # assign statistics
+        temp_leakmeans = tempout_leak[0]          ; list_leakmeans.append(temp_leakmeans)
+        temp_leakvar   = tempout_leak[1]          ; list_leakvar.append(temp_leakvar)
+        temp_leakML    = allleaks_ss[s][MLmodelID]; list_leakML.append(temp_leakML)
+
+    headmeans_ss = dict(zip(scenario, list_headmeans)); headvar_ss = dict(zip(scenario, list_headvar)); headML_ss = dict(zip(scenario, list_headML))
+    flowmeans_ss = dict(zip(scenario, list_flowmeans)); flowvar_ss = dict(zip(scenario, list_flowvar)); flowML_ss = dict(zip(scenario, list_flowML))
+    leakmeans_ss = dict(zip(scenario, list_leakmeans)); leakvar_ss = dict(zip(scenario, list_leakvar)); leakML_ss = dict(zip(scenario, list_leakML))
+
+    # Calculate likelihood statistics for drawdown. Since it is not different for each scenario, it is calc'd once
+    tempout_dd = Lstats(L, dd)
+    ddmean = tempout_dd[0]
+    ddvar  = tempout_dd[1]
+
+    return [headmeans_ss, headvar_ss, headML_ss], [flowmeans_ss, flowvar_ss, flowML_ss], [leakmeans_ss, leakvar_ss, leakML_ss], [ddmean, ddvar]
+
+# %%
+def run_overlap(allheads_ss, allflows_ss, allleaks_ss, mocBehavior, L, scenario):
+    # unpack (non)MOC indices from list
+    moc_idx = mocBehavior[0]; nonmoc_idx = mocBehavior[2]
+    # define (non)MOC likelihood using indices
+    moc_L = L[moc_idx]; nonmoc_L = L[nonmoc_idx]
+    # define list to record overlap for each scenario
+    heads_overlap = []
+    # step through scenarios ('ntna','ytna','ytya')
+    for s in scenario:
+        # set grid length from the shape of the head layer
+        gridLength = np.shape(allheads_ss[s])[1]
+        # create a square array to store overlap
+        overlap = np.zeros((gridLength, gridLength))
+        # split heads arrays by (non)MOC idx
+        moc_data = allheads_ss[s][moc_idx]
+        non_data = allheads_ss[s][nonmoc_idx]
+        # loop through grid rows
+        for i in np.arange(gridLength):
+            # loop through colums along ith row
+            for j in np.arange(gridLength):
+                # initialize arrays for MOCs and other models
+                moc_mask = np.zeros(len(moc_idx))
+                non_mask = np.zeros(len(nonmoc_idx))
+                # find lower maximum value between all (non)MOCs
+                maxcutoff = min(max(moc_data[:,i,j]), max(non_data[:,i,j]))
+                # find higher minimum value between all (non)MOCs
+                mincutoff = max(min(moc_data[:,i,j]), min(non_data[:,i,j]))
+                # find MOCs with predictions WITHIN overlap
+                moc_mask = 1 - (1 * (moc_data[:,i,j] > maxcutoff) + 1 * (moc_data[:,i,j] < mincutoff))
+                # find nonMOCs with predictions WITHIN overlap
+                non_mask = 1 - (1 * (non_data[:,i,j] > maxcutoff) + 1 * (non_data[:,i,j] < mincutoff))
+                # sum likelihoods of models in overlap
+                overlap[i,j] = np.sum(moc_L * moc_mask) + np.sum(nonmoc_L * non_mask)
+                # an overalp of 1 generally occurs because all models give the same value
+                # ...a fixed head boundary or cut out corner
+                overlap[overlap == 1] = np.nan
+        
+        heads_overlap.append(overlap)
+    
+    flows_overlap = []
+    for s in scenario:
+        gridLength = np.shape(allflows_ss[s])[1]
+        overlap    = np.zeros(gridLength)
+        moc_data   = allflows_ss[s][moc_idx]
+        non_data   = allflows_ss[s][nonmoc_idx]
+
+        for i in np.arange(gridLength):
+            moc_mask = np.zeros(len(moc_idx))                                                                    # initialize arrays for MOCs and other models
+            non_mask = np.zeros(len(nonmoc_idx))
+
+            maxcutoff = min(max(moc_data[:,i]), max(non_data[:,i]))                                                     # find lower maximum value between all MOCs and all other models    
+            mincutoff = max(min(moc_data[:,i]), min(non_data[:,i]))                                                     # find higher minimum value between all MOCs and all other models 
+            moc_mask  = 1 - (1 * (moc_data[:,i] >= maxcutoff) + 1 * (moc_data[:,i] <= mincutoff))                                      # find MOCs with predictions WITHIN overlap
+            non_mask  = 1 - (1 * (non_data[:,i] >= maxcutoff) + 1 * (non_data[:,i] <= mincutoff))                                                 # find other models with predictions WITHIN overlap
+            overlap[i] = np.sum(moc_L * moc_mask) + np.sum(nonmoc_L * non_mask)  
+        
+        flows_overlap.append(overlap)
+    
+    leaks_overlap = []
+    for s in scenario:
+        gridLength = np.shape(allleaks_ss[s])[1]
+        overlap    = np.zeros(gridLength)
+        moc_data   = allleaks_ss[s][moc_idx]
+        non_data   = allleaks_ss[s][nonmoc_idx]
+
+        for i in np.arange(gridLength):
+            moc_mask = np.zeros(len(moc_idx))                                                                    # initialize arrays for MOCs and other models
+            non_mask = np.zeros(len(nonmoc_idx))
+
+            maxcutoff = min(max(moc_data[:,i]), max(non_data[:,i]))                                                     # find lower maximum value between all MOCs and all other models    
+            mincutoff = max(min(moc_data[:,i]), min(non_data[:,i]))                                                     # find higher minimum value between all MOCs and all other models 
+            moc_mask  = 1 - (1 * (moc_data[:,i] >= maxcutoff) + 1 * (moc_data[:,i] <= mincutoff))                                      # find MOCs with predictions WITHIN overlap
+            non_mask  = 1 - (1 * (non_data[:,i] >= maxcutoff) + 1 * (non_data[:,i] <= mincutoff))                                                 # find other models with predictions WITHIN overlap
+            overlap[i] = np.sum(moc_L * moc_mask) + np.sum(nonmoc_L * non_mask)
+            
+        leaks_overlap.append(overlap)                                              
+              
+    heads_overlap = dict(zip(scenario, heads_overlap))
+    flows_overlap = dict(zip(scenario, flows_overlap))
+    leaks_overlap = dict(zip(scenario, leaks_overlap))
+
+    return heads_overlap, flows_overlap, leaks_overlap
+
+# %%
+def discriminatoryIndex(nonhead_Lstats, mochead_Lstats, heads_overlap, scenario):
+    # unpack likelihood statistics
+    non_headmeans_ss = nonhead_Lstats[0]; non_headvar_ss = nonhead_Lstats[1]
+    moc_headmeans_ss = mochead_Lstats[0]; moc_headvar_ss = mochead_Lstats[1]
+    # define lists to record discriminatory information
+    meandiff_s = []; sumvar_s = []; di_std_s = []; di_overlap_s = []
+
+    for s in scenario:
+        meandiff   = np.abs(non_headmeans_ss[s] - moc_headmeans_ss[s])
+        sumvar     = non_headvar_ss[s] + moc_headvar_ss[s]
+        sumvar[sumvar < 1e-10] = np.nan
+        di_std     = meandiff/sumvar
+        di_overlap = np.abs(meandiff) * (1-heads_overlap[s])
+
+        meandiff_s.append(meandiff); sumvar_s.append(sumvar)
+        di_std_s.append(di_std)    ; di_overlap_s.append(di_overlap)
+
+    meandiff_ss = dict(zip(scenario, meandiff_s)); sumvar_ss    = dict(zip(scenario, sumvar_s))
+    di_std_ss   = dict(zip(scenario, di_std_s))  ; di_overlap_ss = dict(zip(scenario, di_overlap_s)) 
+
+    return meandiff_ss, sumvar_ss, di_std_ss, di_overlap_ss
+
+# %%
+def particleCapture(nrow, ncol, well1, well2, fNWc, strrow, L, runnumbers, allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya):
+    maxLid=np.argsort(-L)[0]
+
+    strcapgrid=np.zeros((3,nrow,ncol))                                                                # initiate array to store starting locations of particles that end in stream
+    w1capgrid=np.zeros((3,nrow,ncol))                                                                 # initiate array to store starting locations of particles that end in town well
+    w2capgrid=np.zeros((3,nrow,ncol))                                                                 # initiate array to store starting locations of particles that end in ag well
+    maxLw1capgrid=np.zeros((3,nrow,ncol))
+    farmcappermodel=np.zeros(np.shape(runnumbers))
+    streamcappermodel=np.zeros(np.shape(runnumbers))
+    for k in np.arange(3):                                                                            # loop over ntna, ytna, ytya
+        for i in np.arange(np.shape(runnumbers)[0]):                                                  # loop over all models in ensemble                 
+            for j in np.arange(np.shape(allepts_ss_ntna)[1]):                                         # loop over all particles
+                if k==0:
+                    exloc=int(allepts_ss_ntna[i,j,3])                                                 # ending column   
+                    eyloc=int(allepts_ss_ntna[i,j,2])                                                 # ending row
+                    sxloc=int(allepts_ss_ntna[i,j,1])                                                 # starting column
+                    syloc=int(allepts_ss_ntna[i,j,0])                                                 # starting row
+                elif k==1:
+                    exloc=int(allepts_ss_ytna[i,j,3])
+                    eyloc=int(allepts_ss_ytna[i,j,2])
+                    sxloc=int(allepts_ss_ytna[i,j,1])
+                    syloc=int(allepts_ss_ytna[i,j,0])
+                else:
+                    exloc=int(allepts_ss_ytya[i,j,3])
+                    eyloc=int(allepts_ss_ytya[i,j,2])
+                    sxloc=int(allepts_ss_ytya[i,j,1])
+                    syloc=int(allepts_ss_ytya[i,j,0])
+                if exloc==well1[1] and eyloc==well1[2]:                                               # identify particles that end in well1
+                    # add code to determine how many farm particles town well captures for each model                    
+                    if k==2 and sxloc>=fNWc[1] and sxloc<=fNWc[1] +1:                                 # determine if sxloc and syloc for this particle originate on farm, layer 0                        
+                        if syloc>=fNWc[0] and syloc<=fNWc[0] +1:
+                            farmcappermodel[i]=farmcappermodel[i]+1                                   # if so, add one to tally for this model
+                    w1capgrid[k,sxloc,syloc]=w1capgrid[k,sxloc,syloc]+L[i]                            # tally likelihood of model associated with particles captured from each grid cell over all models
+                    if k==2 and i==maxLid:
+                        maxLw1capgrid[k,sxloc,syloc]=1
+                if exloc==well2[1] and eyloc==well2[2]:      
+                    w2capgrid[k,sxloc,syloc]=w2capgrid[k,sxloc,syloc]+L[i]     
+                if exloc==strrow:     
+                    strcapgrid[k,sxloc,syloc]=strcapgrid[k,sxloc,syloc]+L[i]     
+                    if k==2 and sxloc>=fNWc[1] and sxloc<=fNWc[1] +1:                                 # determine if sxloc and syloc for this particle originate on farm, layer 0                        
+                        if syloc>=fNWc[0] and syloc<=fNWc[0] +1:
+                            streamcappermodel[i]=streamcappermodel[i]+1                                   # if so, add one to tally for this model
+
+    return strcapgrid, w1capgrid, w2capgrid
+
+# %%
+
+
