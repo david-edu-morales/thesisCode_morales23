@@ -651,6 +651,153 @@ def behaviorStats (modelBehavior, runnumbers, dict_B_criteria, cullmodels, Nmode
     else:
         print('No (non)behavioral criteria listed.')
 
-
-    
     return dict_B_stats, dict_plotHolds
+
+# %%
+#==================C U L L  L O W  L I K E L I H O O D  M O D E L S======================
+def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cullmodels_counter, Nmodels):
+    # set number of nonbehavioral models for cutting
+    Nnonbehavioral_models = len(modelBehavior[2])
+    lowL_limit = dict_lowL_options['limit']
+    lowL_cutNumber = dict_lowL_options['number']
+    sorted_L  = np.sort(L)[::-1]
+    # sort model indices by likelihood, increasing
+    Lcut_ids  = np.argsort(L)
+    Lcut_vals = np.sort(L)
+    # find number of models represented by % to remove
+    lowL_cutPercent = dict_lowL_options['percent']
+    number_to_remove = int(Nmodels * lowL_cutPercent/100) + Nnonbehavioral_models
+    # don't cut models with L above low limit
+    checkLimit = np.sum(Lcut_vals < lowL_limit)
+    number_to_remove = min(checkLimit, number_to_remove)
+    number_to_remove = min(number_to_remove, lowL_cutNumber)
+    # don't allow number to remove to pass number list
+    Lcut_ids = Lcut_ids[0:number_to_remove]
+    rmse[Lcut_ids] = 1.23456e9
+    Ltemp = 1/rmse
+    L = Ltemp/np.sum(Ltemp)
+
+    cullmodels_counter = cullmodels_counter + 1
+    # store data used to check (non)behavioral status
+    cullmodels[:, cullmodels_counter] = L
+
+    return cullmodels, cullmodels_counter, L, Lcut_ids, rmse
+
+# UNCOMMENT THE FOLLOWING TO DELETE RESULTS RATHER THAN JUST SETTING TO VERY LOW L
+#     excludemodels1=rmse==1.23456e9
+#     excludemodels1=1*excludemodels
+#     excludemodels2=(np.arange(np.shape(runnumbers)[0]))
+#     excludemodels=excludemodels2[excludemodels1==1]
+#     for i in np.arange(np.shape(excludemodels)[0]):                                             # delete non-behavioral models
+#         del runnumbers[excludemodels[i]]
+#         allheads_ss_ntna = np.delete(allheads_ss_ntna, excludemodels[i],axis=0)                 # remove calculation rows for excluded models
+#         allheads_ss_ytna = np.delete(allheads_ss_ytna, excludemodels[i],axis=0)
+#         allheads_ss_ytya = np.delete(allheads_ss_ytya, excludemodels[i],axis=0)
+#         allflows_ss_ntna = np.delete(allflows_ss_ntna, excludemodels[i],axis=0)
+#         allflows_ss_ytna = np.delete(allflows_ss_ytna, excludemodels[i],axis=0)
+#         allflows_ss_ytya = np.delete(allflows_ss_ytya, excludemodels[i],axis=0)
+#         allleaks_ss_ntna = np.delete(allleaks_ss_ntna, excludemodels[i],axis=0)
+#         allleaks_ss_ytna = np.delete(allleaks_ss_ytna, excludemodels[i],axis=0)
+#         allleaks_ss_ytya = np.delete(allleaks_ss_ytya, excludemodels[i],axis=0)
+#         allepts_ss_ntna = np.delete(allepts_ss_ntna, excludemodels[i],axis=0)            
+#         dd = np.delete(dd, excludemodels[i],axis=0)     
+#         run_params = np.delete(run_params, excludemodels[i],axis=0)                             # remove model names from list, too 
+
+# %%
+def asses_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allheads_ss, maxdwt_ss, dd, dict_plotHolds, scenario, Nmodels):
+    moc_total = np.zeros(Nmodels)
+    # determine number of criteria to apply
+    num_moc_criteria = len(dict_MOC_crit['time'])
+    # unpack plotting records
+    holdplotx      = dict_plotHolds['x']
+    holdploty      = dict_plotHolds['y']
+    holdplottype   = dict_plotHolds['type']
+    holdleftlimit  = dict_plotHolds['l_limit']
+    holdrightlimit = dict_plotHolds['r_limit']
+    # loop over bases for discrimination of MOCs or (non)behavioral models
+    for ii in range(num_moc_criteria):
+        print('Assessing model of concern criterion:', ii)
+        # unpack MOC-defining criteria
+        moc_time  = dict_MOC_crit['time'][ii]; moc_basis  = dict_MOC_crit['basis'][ii]
+        moc_row   = dict_MOC_crit['row'][ii] ; moc_column = dict_MOC_crit['column'][ii]
+        moc_limit = dict_MOC_crit['limit']   ; moc_comparison = dict_MOC_crit['comparison'][ii]
+        # establish the time sequence (scenario) for each criterion
+        s = scenario[moc_time]
+        metric = np.zeros(Nmodels)
+
+        if moc_basis == 0:
+            metric = np.max(allflows_ss[s], axis=1)
+        elif moc_basis == 1:
+            metric = maxdwt_ss[s]
+        elif moc_basis == 2:
+            for j in np.arange(Nmodels):
+                metric[j] = allflows_ss[s][j][moc_column]
+        elif moc_basis == 3:
+            for j in np.arange(Nmodels):
+                metric[j] = allheads_ss[s][j][moc_row][moc_column]
+        else:
+            for j in np.arange(Nmodels):
+                metric[j] = dd[j][moc_row][moc_column]
+        # advance counter +1
+        cullmodels_counter=cullmodels_counter+1
+        # store data used to check (non)behavioral status
+        cullmodels[:,cullmodels_counter]= metric
+        # advance counter +1
+        cullmodels_counter=cullmodels_counter+1
+        # boolean mask to identify MOCs. NOTE: default moc_comparison = 0 ... 1 signifies an MOC, 0 an other model
+        cullmodels[:,cullmodels_counter] = 1 * (metric > moc_limit)                         
+        if moc_comparison == 1:
+            cullmodels[:,cullmodels_counter] = 1 - cullmodels[:,cullmodels_counter]
+        # count number of mocs
+        moc_total = moc_total + cullmodels[:,cullmodels_counter] 
+        nummocs = np.sum(cullmodels[:,cullmodels_counter])
+        # sort metric in decreasing order over all models
+        sorted_moc_metric=np.sort(metric)[::-1]
+
+        # save results to plot later
+        plottype=1
+        
+        holdplottype.append(plottype)
+        # store ordinal numbers from 0 to number of criteria used for asssessing models
+        holdplotx.append(np.arange(Nmodels))
+        # hold sorted values of the metric used for assessment, H to L
+        holdploty.append(sorted_moc_metric)
+        # greater than indicates behavioral
+        if moc_comparison==0:
+            holdleftlimit.append(nummocs)   # model zero presumably behavioral
+            holdrightlimit.append(Nmodels)
+        elif moc_comparison==1:
+            holdleftlimit.append(0)
+            holdrightlimit.append(Nmodels-nummocs)
+
+        # advance counter +1
+        cullmodels_counter = cullmodels_counter + 1
+        # update record
+        cullmodels[:,cullmodels_counter] = moc_total
+        # output this file to check all analyses to this point manually
+        np.savetxt("cullmodels.csv", cullmodels, delimiter=",")
+
+    # pack plotting information into dictionary for ease of recall
+    hold_list = [holdplotx, holdploty, holdleftlimit, holdrightlimit, holdplottype]
+    plot_keys = ['x', 'y', 'l_limit', 'r_limit', 'type']
+    dict_plotHolds = dict(zip(plot_keys, hold_list))
+
+    return nummocs, moc_total, cullmodels, cullmodels_counter, dict_plotHolds 
+
+# %%
+#==================M O C  B E H A V I O R================================================
+def mocBehavior(runnumbers, moc_total):
+    # Generate list of MOC names and indices
+    # convert list of model names into an array for masking
+    runnumbers_arr = np.array(runnumbers)
+    # boolean masks for MOCs
+    moc_mask    = np.ma.equal(moc_total, 1)
+    nonmoc_mask = np.ma.equal(moc_total, 0)
+    # lists of indices for (non)MOCs
+    moc_idx    = np.where(moc_mask)[0].tolist()
+    nonmoc_idx = np.where(nonmoc_mask)[0].tolist()
+    # lists of (non)MOC names
+    moc_models    = runnumbers_arr[moc_mask].tolist()
+    nonmoc_models = runnumbers_arr[nonmoc_mask].tolist()
+
+    return [moc_idx, moc_models, nonmoc_idx, nonmoc_models]
