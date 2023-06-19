@@ -847,3 +847,67 @@ def mocStats(mocBehavior, runnumbers):
         print('No models of concern')
 
     return dict_MOC_stats
+
+# %%
+#==================L I K E L I H O O D  S T A T I S T I C S==============================
+# calculate the likelihood weighted mean and standard deviation, defaults to normal mean and std if no data available
+def Lstats(Lin,datain):                                                                           
+    tempout = []
+    # differentiate head and streamflow by dimensionality
+    if np.ndim(datain) == 3:                                                        # if ndim = 3, dealing with head data
+        # set up temporary array to store mean over all data
+        tempmeanmatrix = np.zeros((np.shape(datain)[1],np.shape(datain)[2]))
+        # set up temporary array to store standard deviation over all data
+        tempstdmatrix  = np.zeros((np.shape(datain)[1],np.shape(datain)[2]))
+    elif np.ndim(datain) == 2:                                                      # if ndim = 2, dealing with flow data
+        # temp array to store mean over all data
+        tempmeanmatrix = np.zeros((np.shape(datain)[1]))
+        # temp array to store standard deviation over all data
+        tempstdmatrix  = np.zeros((np.shape(datain)[1]))
+    # kill the program if the data has neither 2 nor 3 dimentions
+    else:
+        print('problem with an input file')
+        return
+    # Loop through each element in array (subsurface or stream depending on datain)
+    for j in np.arange(np.shape(datain)[1]):
+        # treat 2 and 3 dimensional differently
+        if np.ndim(datain)==3:
+            # move along grid columns for each row (j)
+            for k in np.arange(np.shape(datain)[2]):
+                # extract head data for grid cell at row (j) and column (k) across all models
+                tempvar=datain[:,j,k]
+                # calculate L-weighted mean over all models at each location 
+                tempmeanval=np.sum(tempvar*Lin)/np.sum(Lin)
+                # record L-weighted mean for each location in j x k matrix
+                tempmeanmatrix[j,k]=tempmeanval
+                # repeat L-weighted mean
+                meanremove=np.repeat(tempmeanval,np.shape(tempvar)[0])
+                # calculate L-weighted standard deviation over all models at each location
+                tempstdmatrix[j,k]=(np.sum(Lin*(tempvar-meanremove)**2)/(np.sum(Lin)*
+                    (np.shape(Lin)[0]-1)/np.shape(Lin)[0]))**0.5
+        # Code block to handle streamflow data
+        else:
+            # extract streamflow data for grid cell at column (j) across all models
+            tempvar=datain[:,j]
+            # calculate L-weighted mean over all models at each location
+            tempmeanval=np.sum(tempvar*Lin)/np.sum(Lin)
+            # record L-weighted mean for each location in 2-d matrix
+            tempmeanmatrix[j]=tempmeanval
+            # repeat L-weighted mean
+            meanremove=np.repeat(tempmeanval,np.shape(tempvar)[0])
+            # calculated L-weighted standard deviation over all models at each location
+            tempstdmatrix[j]=(np.sum(Lin*(tempvar-meanremove)**2)/(np.sum(Lin)*
+                    (np.shape(Lin)[0]-1)/np.shape(Lin)[0]))**0.5
+    # export matric of L-weighted means over all models at each point
+    tempout.append(tempmeanmatrix)
+    # export matrix of L-weighted standard deviation over all models at each point
+    tempout.append(tempstdmatrix)
+
+    # clear temporary variables
+    del tempmeanval
+    del meanremove
+    del tempvar
+    del tempmeanmatrix
+    del tempstdmatrix
+    
+    return tempout
