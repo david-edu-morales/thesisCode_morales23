@@ -801,3 +801,49 @@ def mocBehavior(runnumbers, moc_total):
     nonmoc_models = runnumbers_arr[nonmoc_mask].tolist()
 
     return [moc_idx, moc_models, nonmoc_idx, nonmoc_models]
+
+# %%
+#==================M O C  S T A T I S T I C S============================================
+def mocStats(mocBehavior, runnumbers):
+    # unpack list of (non)MOC idx and names
+    moc_idx    = mocBehavior[0]; moc_models    = mocBehavior[1]
+    nonmoc_idx = mocBehavior[2]; nonmoc_models = mocBehavior[3]
+
+    if len(nonmoc_models) > 0:
+        tempvar = []
+        moc_meanid = np.zeros(7); moc_varid  = np.zeros(7)
+        # counter over variable parameter positions, 9 through 15
+        for i in np.arange(9, 16):
+            # temporary variable to hold values for a single parameter
+            tempvar = np.zeros(len(moc_idx))
+            counter = -1
+            for j in (moc_models):
+                counter += 1
+                # extract parameter value from model name (str)
+                tempvar[counter] = int(runnumbers[counter][i])
+            # calculate the mean of the parameter values from moc models
+            moc_meanid[i-9] = np.mean(tempvar)
+            # calculate the STD of the parameter values from moc models
+            moc_varid[i-9]  = np.std(tempvar)
+        moc_meanid = np.round(moc_meanid*1000)/1000
+        # repeat above process for nonMOC models
+        tempvar = []
+        nonmoc_meanid = np.zeros(7); nonmoc_varid = np.zeros(7)
+        for i in np.arange(9, 16):
+            tempvar = np.zeros(len(nonmoc_idx))
+            counter = -1
+            for j in (nonmoc_models):
+                counter += 1
+                tempvar[counter] = int(runnumbers[counter][i])
+            nonmoc_meanid[i-9] = np.mean(tempvar)
+            nonmoc_varid[i-9]  = np.std(tempvar)
+        nonmoc_meanid = np.round(nonmoc_meanid * 1000)/1000
+
+        moc_stats = [moc_meanid, moc_varid, nonmoc_meanid, nonmoc_varid]
+        moc_keys  = ['moc_mean', 'moc_var', 'nonmoc_mean', 'nonmoc_var']
+        dict_MOC_stats = dict(zip(moc_keys, moc_stats))
+
+    else:
+        print('No models of concern')
+
+    return dict_MOC_stats
