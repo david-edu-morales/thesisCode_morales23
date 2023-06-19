@@ -206,13 +206,15 @@ def modelResults(runnumbers, ztop, return_loc):
         for i in range(Nmodels):
             # use head values from top layer
             heads = np.load(runnumbers[i]+'_heads_ss_'+s+'.npy')[0,:,:]
+            # remove the corners and other negative values because they confuse std deviation
+            heads[heads<0] = 0
             heads_arr[i] = heads
         scenario_list.append(heads_arr)
 
     allheads_ss = dict(zip(scenario, scenario_list))    # compile list into dictionary
 
-    # remove the corners as they confused the standard deviation calculation
-    allheads_ss[s][allheads_ss[s]<0]=0
+    # remove the corners as they confused the standard deviation calculation (NOTE: this step was moved into the for loop above)
+    # allheads_ss[s][allheads_ss[s]<0]=0
 
     #===================B U D G E T S===============================================
     # initialize arrays to accept all budgets for each ss run
@@ -485,3 +487,71 @@ def useTrueData(dict_L_criteria):
     
     return data_value, Ncomparisons
 
+# %%
+#==================A S S E S S  N O N B E H A V I O R A L  M O D E L S===================
+def assess_nonBehavioral(dict_B_criteria, rmse, cullmodels):
+    # extract the number of nonbehavioral criteria to assess each model
+    NBcriteria = len(dict_B_criteria['comparison'])
+    # loop through each criterion to determine if each model falls within behavioral limits
+    for i in range(NBcriteria):
+        comparison = dict_B_criteria['comparison'][i]       # 0: greater than, 1: less than
+        limit      = dict_B_criteria['limit'][i]            # the limiting value
+        # assign extreme rmse value to nonbehavioral models
+        if comparison == 0:
+            rmse[cullmodels[:,i] <= limit] = 1.2345e9
+        else:
+            rmse[cullmodels[:,i] >= limit] = 1.2345e9
+
+    return rmse
+
+# %%
+#===========================================================================
+def calculateModelLikelihood(dict_B_criteria, truth_value, cullmodels, cullmodels_counter, num_L_criteria, startdata, Nmodels, useTrueData_flag):
+    rmse=np.zeros(Nmodels)                  # use model rmse to flag nonbehavioral models below
+    L = 1/Nmodels                           # set likelihoods equal by default, keep if there are no data to compare
+
+    # determine model specific model likelihood when flag is on
+    if useTrueData_flag == True:
+        # set counter to first truth value
+        cullmodels_counter = cullmodels_counter + num_L_criteria
+        # set mismatch value to zero. iteratively summed with each 
+        mmsqsum = 0
+        
+        for i in range(num_L_criteria):
+            cullmodels_counter += 1                     # advance the counter +1
+            # extract simulated value across all models for comparison
+            simValue = cullmodels[:, i+startdata]
+            # square mismatch for first datapoint      
+            mmsq = ((simValue-truth_value[i])**2)
+            # store square mistmatches across all models for later checking
+            cullmodels[:, cullmodels_counter] = mmsq
+            # sum square mismatches
+            mmsqsum += mmsq
+        # calculate root mean sqaure mismatch    
+        rmse = (mmsqsum/(i+1))**0.5
+
+        cullmodels_counter += 1                         # advance counter to record rmse
+        cullmodels[:, cullmodels_counter] = rmse
+
+        rmse = assess_nonBehavioral(dict_B_criteria, rmse, cullmodels)
+        
+        cullmodels_counter += 1
+        # store rmse after culling non-behavioral models
+        cullmodels[:, cullmodels_counter] = rmse
+        # invert rmse (1st step to calculating likelihood)
+        Ltemp = 1/rmse
+        L = Ltemp/np.sum(Ltemp)
+        cullmodels_counter += 1
+        cullmodels[:, cullmodels_counter] = L
+    
+    else:
+        rmse = assess_nonBehavioral(dict_B_criteria, rmse, cullmodels)
+
+        # this portion of code is to specify Likelihoods of models based on their mismatch.
+        # in Ty's code, there is an else statement that bypasses this specified likelihoods, but still
+        # sets nonbehavioral models to incredibly high rmse. 
+        # First, make a function that handles nonbehavioral models and stack it inside of the likelihood function.
+
+    sorted_L_behavioral=np.sort(L)[::-1]
+
+    return rmse, cullmodels_counter, cullmodels, L, sorted_L_behavioral
