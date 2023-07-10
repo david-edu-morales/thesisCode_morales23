@@ -1,0 +1,10 @@
+thruthparvals, vals
+
+modelgentype = -1
+
+delete fname.append(truth) 
+
+truth model used th eparameter values used in the elif modelgentype==-1
+
+difference divided by the error (Signal / noise)
+are the two groups more different than each other than they differe within each group

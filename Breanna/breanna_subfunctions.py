@@ -26,15 +26,16 @@ start = time.time()
 stakeholder='env'                                                                                      # choose from ag/town/env
 stage='combine'                                                                                        # choose from random/reseed/combined/afterdata
 prefix = stakeholder + '_' + stage + '_'      #generates filename prefix
+folder = 6.22
 
-def output_directory():     # use this to define where your output files reside
-    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_output')       # 244 model rerun
+def output_directory(folder):     # use this to define where your output files reside
+    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\{}_output'.format(folder))       # 244 model rerun
  
-def figure_directory():     # use this to define where to put your figure files 
-     os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_figures')
+def figure_directory(folder):     # use this to define where to put your figure files 
+     os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\{}_figures'.format(folder))
 
-def comparison_directory():
-    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\100model_likelihood')
+def comparison_directory(folder):
+    os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\{}_likelihood'.format(folder))
     
 displaycolumn=40                                                                                       # column for head and drawdown analysis
 displayrow=30                                                                                         # row for head and drawdown analysis
@@ -50,9 +51,9 @@ in_column_sequence =     [15,15,15]                                             
 in_row_sequence =        [15,15,15]                                                                   # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
                   
 behavioral_criteria = [in_time_sequence, in_basis_sequence, in_comparison_sequence, in_limit_sequence, in_column_sequence, in_row_sequence]
-comparison_directory()
+comparison_directory(folder)
 np.save(prefix + 'behavioral_criteria',behavioral_criteria) #save behavioral criteria to a file
-output_directory()
+output_directory(folder)
 
 define_mocs = True                                                                                    # define criteria to meet to qualify as an MOC ... if a model PASSES this test it is a model of concern (MOC)
 if stakeholder=='town':
@@ -88,13 +89,13 @@ elif stakeholder=='env':
 #       4 = drawdown at specified location
                                                                                                       # use empty brackets if no data available, each value must contain the same number of inputs, separate multiple data points by commas
 moc_criteria = [moc_time_sequence, moc_basis_sequence, moc_comparison_sequence, moc_limit_sequence, moc_column_sequence, moc_row_sequence]
-comparison_directory()
+comparison_directory(folder)
 np.save(prefix + 'moc_criteria',moc_criteria) #save moc criteria to a file
-output_directory()
-
+output_directory(folder)
+'''
 read_true_data=True                                                                                   # True to read in the observations from truth_heads_ss_ytna.npy and truth_flows_ss_ytna.npy
 if read_true_data==True:
-    output_directory()
+    output_directory(folder)
     trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]
     trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]
 
@@ -128,11 +129,11 @@ lowLecho=True                                                                   
 
 #Export files needed for multi-stakeholder comparisons:
 #To import, use np.load()
-comparison_directory()               #change directory to current stakeholder and stage
+comparison_directory(folder)               #change directory to current stakeholder and stage
 np.save(prefix + 'data_layer', data_layer_sequence)
 np.save(prefix + 'data_row', data_row_sequence)
 np.save(prefix + 'data_column', data_column_sequence)
-output_directory()
+output_directory(folder)'''
 
 # use the following to control which analyses are completed - may be useful when running partial analyses for many models
 run_sections=3
@@ -145,7 +146,7 @@ run_sections=3
 # %%
 #===========READINMODELS FUNCTION==================================================================
 def readInModels():
-    output_directory(); mydir = os.getcwd()             # set the current directory to output folder
+    output_directory(folder); mydir = os.getcwd()             # set the current directory to output folder
     file_list = glob.glob(mydir + "/m*_parvals")        # only consider output model files
 
     runnumbers   = []                                   # list to hold model names
@@ -277,13 +278,13 @@ def modelResults(runnumbers, ztop, return_loc):
     value    = np.zeros((Nmodels,49))
     allleaks_ss = dict.fromkeys(scenario,value)
 
-    for s in scenario:
-        for i in range(Nmodels):
-            leaks=np.load(runnumbers[i]+'_strleak_ss_'+s+'.npy')
-            leak = []
-            for tup in range(len(leaks)):
-                leak.append(leaks[tup][1])
-            allleaks_ss[s][i][:][:] = leak
+    # for s in scenario:
+    #     for i in range(Nmodels):
+    #         leaks=np.load(runnumbers[i]+'_strleak_ss_'+s+'.npy')
+    #         leak = []
+    #         for tup in range(len(leaks)):
+    #             leak.append(leaks[tup][1])
+    #         allleaks_ss[s][i][:][:] = leak
 
     scenario_leakage = []
     for s in scenario:
@@ -472,7 +473,7 @@ def useTrueData(dict_L_criteria):
     data_row     = dict_L_criteria['row']           # cell row for comparison value 
     data_column  = dict_L_criteria['column']        # cell column for comparison value
     # switch to output directory to interact with truth model files
-    output_directory()
+    output_directory(folder)
     # set truth model values to objects
     trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]           # load truth heads file
     trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]               # load truth flows file 
@@ -543,16 +544,19 @@ def calculateModelLikelihood(dict_B_criteria, truth_value, cullmodels, cullmodel
         L = Ltemp/np.sum(Ltemp)
         cullmodels_counter += 1
         cullmodels[:, cullmodels_counter] = L
+
+        sorted_L_behavioral=np.sort(L)[::-1]
     
     else:
         rmse = assess_nonBehavioral(dict_B_criteria, rmse, cullmodels)
+        sorted_L_behavioral = L
 
         # this portion of code is to specify Likelihoods of models based on their mismatch.
         # in Ty's code, there is an else statement that bypasses this specified likelihoods, but still
         # sets nonbehavioral models to incredibly high rmse. 
         # First, make a function that handles nonbehavioral models and stack it inside of the likelihood function.
 
-    sorted_L_behavioral=np.sort(L)[::-1]
+    # sorted_L_behavioral=np.sort(L)[::-1]
 
     return rmse, cullmodels_counter, cullmodels, L, sorted_L_behavioral
 
@@ -660,7 +664,7 @@ def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cull
     Nnonbehavioral_models = len(modelBehavior[2])
     lowL_limit = dict_lowL_options['limit']
     lowL_cutNumber = dict_lowL_options['number']
-    sorted_L  = np.sort(L)[::-1]
+    # sorted_L  = np.sort(L)[::-1]
     # sort model indices by likelihood, increasing
     Lcut_ids  = np.argsort(L)
     Lcut_vals = np.sort(L)
@@ -963,7 +967,7 @@ def run_Lstats(L, allheads_ss, allflows_ss, allleaks_ss, dd, scenario, Lstat_fla
     ddmean = tempout_dd[0]
     ddvar  = tempout_dd[1]
 
-    return [headmeans_ss, headvar_ss, headML_ss], [flowmeans_ss, flowvar_ss, flowML_ss], [leakmeans_ss, leakvar_ss, leakML_ss], [ddmean, ddvar]
+    return [headmeans_ss, headvar_ss, headML_ss], [flowmeans_ss, flowvar_ss, flowML_ss], [leakmeans_ss, leakvar_ss, leakML_ss], [ddmean, ddvar], MLmodelID
 
 # %%
 def run_overlap(allheads_ss, allflows_ss, allleaks_ss, mocBehavior, L, scenario):
