@@ -23,10 +23,10 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)                 
 # %%
 start = time.time()
 
-stakeholder='env'                                                                                      # choose from ag/town/env
-stage='combine'                                                                                        # choose from random/reseed/combined/afterdata
-prefix = stakeholder + '_' + stage + '_'      #generates filename prefix
-folder = 6.22
+# stakeholder='env'                                                                                      # choose from ag/town/env
+# stage='combine'                                                                                        # choose from random/reseed/combined/afterdata
+# prefix = stakeholder + '_' + stage + '_'      #generates filename prefix
+# folder = 6.22
 
 def output_directory(folder):     # use this to define where your output files reside
     os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\{}_output'.format(folder))       # 244 model rerun
@@ -37,46 +37,46 @@ def figure_directory(folder):     # use this to define where to put your figure 
 def comparison_directory(folder):
     os.chdir('c:\\Users\\moral\\OneDrive\\UofA\\2022-2023\\Research\\thesisCode_morales23\\Breanna\\{}_likelihood'.format(folder))
     
-displaycolumn=40                                                                                       # column for head and drawdown analysis
-displayrow=30                                                                                         # row for head and drawdown analysis
-strdisplaycolumn=35                                                                                   # column for streamflow analysis
+# displaycolumn=40                                                                                       # column for head and drawdown analysis
+# displayrow=30                                                                                         # row for head and drawdown analysis
+# strdisplaycolumn=35                                                                                   # column for streamflow analysis
 
-minmismatch=0.05                                                                                      # don't consider mismatches that are less than this value - avoids unrealistically high likelihoods
-                                                                                                      # define criteria to meet to qualify as behavioral ... if a model PASSES this test it is behavioral
-in_time_sequence =       [1,1,1]                                                                      # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
-in_basis_sequence =      [0,0,1]                                                                      # see list below
-in_comparison_sequence = [1,0,1]                                                                      # 0 = greater than, 1 = less than
-in_limit_sequence =      [2000,10,3]                                                                  # value defining behavioral response
-in_column_sequence =     [15,15,15]                                                                   # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
-in_row_sequence =        [15,15,15]                                                                   # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+# minmismatch=0.05                                                                                      # don't consider mismatches that are less than this value - avoids unrealistically high likelihoods
+#                                                                                                       # define criteria to meet to qualify as behavioral ... if a model PASSES this test it is behavioral
+# in_time_sequence =       [1,1,1]                                                                      # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+# in_basis_sequence =      [0,0,1]                                                                      # see list below
+# in_comparison_sequence = [1,0,1]                                                                      # 0 = greater than, 1 = less than
+# in_limit_sequence =      [2000,10,3]                                                                  # value defining behavioral response
+# in_column_sequence =     [15,15,15]                                                                   # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+# in_row_sequence =        [15,15,15]                                                                   # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
                   
-behavioral_criteria = [in_time_sequence, in_basis_sequence, in_comparison_sequence, in_limit_sequence, in_column_sequence, in_row_sequence]
-comparison_directory(folder)
-np.save(prefix + 'behavioral_criteria',behavioral_criteria) #save behavioral criteria to a file
-output_directory(folder)
+# behavioral_criteria = [in_time_sequence, in_basis_sequence, in_comparison_sequence, in_limit_sequence, in_column_sequence, in_row_sequence]
+# comparison_directory(folder)
+# np.save(prefix + 'behavioral_criteria',behavioral_criteria) #save behavioral criteria to a file
+# output_directory(folder)
 
-define_mocs = True                                                                                    # define criteria to meet to qualify as an MOC ... if a model PASSES this test it is a model of concern (MOC)
-if stakeholder=='town':
-    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
-    moc_basis_sequence =      [4]                                                                       # see list below
-    moc_comparison_sequence = [0]                                                                       # 0 = greater than, 1 = less than
-    moc_limit_sequence =      [0.5]                                                                   # value defining behavioral response
-    moc_column_sequence =     [37]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
-    moc_row_sequence =        [20]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
-elif stakeholder=='ag':
-    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
-    moc_basis_sequence =      [3]                                                                       # see list below
-    moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
-    moc_limit_sequence =      [68]                                                                   # value defining behavioral response
-    moc_column_sequence =     [13]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
-    moc_row_sequence =        [11]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
-elif stakeholder=='env':
-    moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
-    moc_basis_sequence =      [2]                                                                       # see list below
-    moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
-    moc_limit_sequence =      [50]                                                                   # value defining behavioral response
-    moc_column_sequence =     [38]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
-    moc_row_sequence =        [25]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+# define_mocs = True                                                                                    # define criteria to meet to qualify as an MOC ... if a model PASSES this test it is a model of concern (MOC)
+# if stakeholder=='town':
+#     moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+#     moc_basis_sequence =      [4]                                                                       # see list below
+#     moc_comparison_sequence = [0]                                                                       # 0 = greater than, 1 = less than
+#     moc_limit_sequence =      [0.5]                                                                   # value defining behavioral response
+#     moc_column_sequence =     [37]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+#     moc_row_sequence =        [20]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+# elif stakeholder=='ag':
+#     moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+#     moc_basis_sequence =      [3]                                                                       # see list below
+#     moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
+#     moc_limit_sequence =      [68]                                                                   # value defining behavioral response
+#     moc_column_sequence =     [13]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+#     moc_row_sequence =        [11]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
+# elif stakeholder=='env':
+#     moc_time_sequence =       [2]                                                                       # 0=ntna, 1=ytna, 2=ytya ... enter a number for each criterion applied
+#     moc_basis_sequence =      [2]                                                                       # see list below
+#     moc_comparison_sequence = [1]                                                                       # 0 = greater than, 1 = less than
+#     moc_limit_sequence =      [50]                                                                   # value defining behavioral response
+#     moc_column_sequence =     [38]                                                                     # column of observation point for basis 2 or 3  - must have a value for every criterion, even if not used
+#     moc_row_sequence =        [25]                                                                     # row of observation point for basis 2 or 3 - must have a value for every criterion, even if not used
     
 # we should add the ability to have an MOC criterion in other than layer 1!!
 # add criterion for flow reduction
@@ -88,10 +88,10 @@ elif stakeholder=='env':
 #       3 = head at specified location
 #       4 = drawdown at specified location
                                                                                                       # use empty brackets if no data available, each value must contain the same number of inputs, separate multiple data points by commas
-moc_criteria = [moc_time_sequence, moc_basis_sequence, moc_comparison_sequence, moc_limit_sequence, moc_column_sequence, moc_row_sequence]
-comparison_directory(folder)
-np.save(prefix + 'moc_criteria',moc_criteria) #save moc criteria to a file
-output_directory(folder)
+# moc_criteria = [moc_time_sequence, moc_basis_sequence, moc_comparison_sequence, moc_limit_sequence, moc_column_sequence, moc_row_sequence]
+# comparison_directory(folder)
+# np.save(prefix + 'moc_criteria',moc_criteria) #save moc criteria to a file
+# output_directory(folder)
 '''
 read_true_data=True                                                                                   # True to read in the observations from truth_heads_ss_ytna.npy and truth_flows_ss_ytna.npy
 if read_true_data==True:
@@ -136,7 +136,7 @@ np.save(prefix + 'data_column', data_column_sequence)
 output_directory(folder)'''
 
 # use the following to control which analyses are completed - may be useful when running partial analyses for many models
-run_sections=3
+# run_sections=3
 
 # 0 = through identifying behavioral models and calculating model likelihoods
 # 1 = identify models of concern
@@ -145,7 +145,7 @@ run_sections=3
 
 # %%
 #===========READINMODELS FUNCTION==================================================================
-def readInModels():
+def readInModels(folder):
     output_directory(folder); mydir = os.getcwd()             # set the current directory to output folder
     file_list = glob.glob(mydir + "/m*_parvals")        # only consider output model files
 
@@ -354,9 +354,11 @@ def modelResults(runnumbers, ztop, return_loc):
                 allepts_ss_ntna, allepts_ss_ytna, allepts_ss_ytya, dd]
 
 # %%
-def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
-    global num_criteria
+def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd, behavioral_criteria):
     scenario = ('ntna', 'ytna', 'ytya')
+    in_time_seq       = behavioral_criteria[0]; in_basis_seq = behavioral_criteria[1]
+    in_comparison_seq = behavioral_criteria[2]; in_limit_seq = behavioral_criteria[3]
+    in_column_seq     = behavioral_criteria[4]; in_row_seq   = behavioral_criteria[5]
 
 
     Nmodels = np.shape(runnumbers)[0]
@@ -365,8 +367,9 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
     cullmodels_counter=-1
 
     # determine number of criteria to that have been applied
-    if 'in_time_sequence' in globals():
-        num_criteria=np.shape(in_time_sequence)[0]
+    # if 'in_time_seq' in globals():
+    #     num_criteria=np.shape(in_time_seq)[0]
+    num_criteria=np.shape(in_time_seq)[0]
 
     if num_criteria>0:
         print('Assessing (non)behavioral criteria')
@@ -377,17 +380,17 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd):
             print('Assessing criterion',ii)
 
             # establish the time sequence (scenario) for each criterion
-            in_time=in_time_sequence[ii]
+            in_time=in_time_seq[ii]
             s = scenario[in_time]           # set value for scenario ('ntna','ytna','ytya')
 
             # set criteria values for basis for consideration, greater/less than, and value limit
-            in_basis=in_basis_sequence[ii] 
-            in_comparison=in_comparison_sequence[ii]
-            in_limit=in_limit_sequence[ii]
+            in_basis=in_basis_seq[ii] 
+            in_comparison=in_comparison_seq[ii]
+            in_limit=in_limit_seq[ii]
 
             # set column and row values for observation
-            in_column=in_column_sequence[ii]
-            in_row=in_row_sequence[ii]
+            in_column=in_column_seq[ii]
+            in_row=in_row_seq[ii]
 
             if in_basis==0:                                         # store maximum flow for each model
                 in_metric=np.zeros((np.shape(allflows_ss[s])[0]))
@@ -466,7 +469,7 @@ def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_d
 
 # %%
 #==================U S E  T R U E  D A T A===============================================
-def useTrueData(dict_L_criteria):
+def useTrueData(dict_L_criteria, folder):
     # set up variable values
     Ncomparisons = len(dict_L_criteria['time'])     # determine number of comparisons
     data_basis   = dict_L_criteria['basis']         # basis for comparison (0: streamflow, 1: head)
@@ -477,7 +480,7 @@ def useTrueData(dict_L_criteria):
     # set truth model values to objects
     trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]           # load truth heads file
     trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]               # load truth flows file 
-    # create awwary to record truth values                                      
+    # create array to record truth values                                      
     data_value = np.zeros(Ncomparisons)                                                           
     # Record truth value for each comparison depending on basis
     for ii in range(Ncomparisons):                                                              
@@ -708,7 +711,7 @@ def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cull
 #         run_params = np.delete(run_params, excludemodels[i],axis=0)                             # remove model names from list, too 
 
 # %%
-def asses_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allheads_ss, maxdwt_ss, dd, dict_plotHolds, scenario, Nmodels):
+def assess_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allheads_ss, maxdwt_ss, dd, dict_plotHolds, scenario, Nmodels):
     moc_total = np.zeros(Nmodels)
     # determine number of criteria to apply
     num_moc_criteria = len(dict_MOC_crit['time'])
@@ -730,7 +733,7 @@ def asses_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allhe
         metric = np.zeros(Nmodels)
 
         if moc_basis == 0:
-            metric = np.max(allflows_ss[s], axis=1)
+            metric = np.max
         elif moc_basis == 1:
             metric = maxdwt_ss[s]
         elif moc_basis == 2:
@@ -778,8 +781,8 @@ def asses_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allhe
         cullmodels_counter = cullmodels_counter + 1
         # update record
         cullmodels[:,cullmodels_counter] = moc_total
-        # output this file to check all analyses to this point manually
-        np.savetxt("cullmodels.csv", cullmodels, delimiter=",")
+        # # output this file to check all analyses to this point manually
+        # np.savetxt(prefix + "cullmodels.csv", cullmodels, delimiter=",")
 
     # pack plotting information into dictionary for ease of recall
     hold_list = [holdplotx, holdploty, holdleftlimit, holdrightlimit, holdplottype]
