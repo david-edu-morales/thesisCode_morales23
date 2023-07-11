@@ -733,7 +733,7 @@ def assess_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allh
         metric = np.zeros(Nmodels)
 
         if moc_basis == 0:
-            metric = np.max
+            metric = np.max(allflows_ss[s], axis=1)
         elif moc_basis == 1:
             metric = maxdwt_ss[s]
         elif moc_basis == 2:
