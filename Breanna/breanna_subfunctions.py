@@ -711,6 +711,26 @@ def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cull
 #         run_params = np.delete(run_params, excludemodels[i],axis=0)                             # remove model names from list, too 
 
 # %%
+def calculateUtility(moc_limit, moc_comparison, metric):
+    # set variables
+    u_factor = 0.8                      # set utility variance
+    u_var    = u_factor * moc_limit     # calculate variance of utility threshold
+    u_range  = 2 * u_var                # calculate range of utility thresholds
+    u_LL     = moc_limit - u_var        # lower threshold of utility
+
+    # first utility
+    u_norm = (metric - u_LL)/u_range
+
+    if moc_comparison == 0:
+        utility = 1 - u_norm
+    if moc_comparison == 1:
+        utility = u_norm
+    
+    utility[utility < 0] = 0
+    utility[utility > 1] = 1
+    
+    return utility
+# %%
 def assess_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allheads_ss, maxdwt_ss, dd, dict_plotHolds, scenario, Nmodels):
     moc_total = np.zeros(Nmodels)
     # determine number of criteria to apply
@@ -727,28 +747,32 @@ def assess_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allh
         # unpack MOC-defining criteria
         moc_time  = dict_MOC_crit['time'][ii]; moc_basis  = dict_MOC_crit['basis'][ii]
         moc_row   = dict_MOC_crit['row'][ii] ; moc_column = dict_MOC_crit['column'][ii]
-        moc_limit = dict_MOC_crit['limit']   ; moc_comparison = dict_MOC_crit['comparison'][ii]
+        moc_limit = dict_MOC_crit['limit'][ii]   ; moc_comparison = dict_MOC_crit['comparison'][ii]
         # establish the time sequence (scenario) for each criterion
         s = scenario[moc_time]
-        metric = np.zeros(Nmodels)
+        metric  = np.zeros(Nmodels)
 
+        # extract the metric value depending on the basis of MOC comparison
         if moc_basis == 0:
             metric = np.max(allflows_ss[s], axis=1)
         elif moc_basis == 1:
             metric = maxdwt_ss[s]
         elif moc_basis == 2:
-            for j in np.arange(Nmodels):
-                metric[j] = allflows_ss[s][j][moc_column]
+            metric = allflows_ss[s][:,moc_column]
         elif moc_basis == 3:
-            for j in np.arange(Nmodels):
-                metric[j] = allheads_ss[s][j][moc_row][moc_column]
+            metric = allheads_ss[s][:, moc_row, moc_column]
         else:
-            for j in np.arange(Nmodels):
-                metric[j] = dd[j][moc_row][moc_column]
+            metric = dd[:, moc_row, moc_column]
+        # calculate utility
+        utility = calculateUtility(moc_limit, moc_comparison, metric)
         # advance counter +1
         cullmodels_counter=cullmodels_counter+1
         # store data used to check (non)behavioral status
         cullmodels[:,cullmodels_counter]= metric
+        # advance counter +1
+        cullmodels_counter=cullmodels_counter+1
+        # store calculated utility values
+        cullmodels[:,cullmodels_counter] = utility
         # advance counter +1
         cullmodels_counter=cullmodels_counter+1
         # boolean mask to identify MOCs. NOTE: default moc_comparison = 0 ... 1 signifies an MOC, 0 an other model
