@@ -553,6 +553,8 @@ def calculateModelLikelihood(dict_B_criteria, truth_value, cullmodels, cullmodel
     else:
         rmse = assess_nonBehavioral(dict_B_criteria, rmse, cullmodels)
         sorted_L_behavioral = L
+        cullmodels_counter += 1
+        cullmodels[:,cullmodels_counter] = L
 
         # this portion of code is to specify Likelihoods of models based on their mismatch.
         # in Ty's code, there is an else statement that bypasses this specified likelihoods, but still
