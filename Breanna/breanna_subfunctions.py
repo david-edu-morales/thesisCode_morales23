@@ -674,12 +674,17 @@ def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cull
     # find number of models represented by % to remove
     lowL_cutPercent = dict_lowL_options['percent']
     number_to_remove = int(Nmodels * lowL_cutPercent/100) + Nnonbehavioral_models
+    print('Nonbehavioral models:', Nnonbehavioral_models, '\nLow likelihood cut percentage + nonbehavioral models:', number_to_remove)
     # don't cut models with L above low limit
     checkLimit = np.sum(Lcut_vals < lowL_limit)
+    print('Models with likelihood lower than {}:'.format(lowL_limit), checkLimit)
     number_to_remove = min(checkLimit, number_to_remove)
+    print('Updated number to remove:', number_to_remove)
     number_to_remove = min(number_to_remove, lowL_cutNumber)
+    print('Making sure no more than {} models are removed, updated number to remove:'.format(lowL_cutNumber), number_to_remove)
     # don't allow number to remove to pass number list
     Lcut_ids = Lcut_ids[0:number_to_remove]
+    print('Total number of models to cut:', len(Lcut_ids))
     rmse[Lcut_ids] = 1.23456e9
     Ltemp = 1/rmse
     L = Ltemp/np.sum(Ltemp)
