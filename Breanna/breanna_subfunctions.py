@@ -469,7 +469,7 @@ def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_d
 
 # %%
 #==================U S E  T R U E  D A T A===============================================
-def useTrueData(dict_L_criteria, folder):
+def useTrueData(dict_L_criteria, folder, stakeholder):
     # set up variable values
     Ncomparisons = len(dict_L_criteria['time'])     # determine number of comparisons
     data_basis   = dict_L_criteria['basis']         # basis for comparison (0: streamflow, 1: head)
@@ -478,8 +478,8 @@ def useTrueData(dict_L_criteria, folder):
     # switch to output directory to interact with truth model files
     output_directory(folder)
     # set truth model values to objects
-    trueheads_ss_ytna=np.load('truth_heads_ss_ytna.npy')[0][:][:]           # load truth heads file
-    trueflows_ss_ytna=np.load('truth_strflow_ss_ytna.npy')[:]               # load truth flows file 
+    trueheads_ss_ytna=np.load(stakeholder+'_truth_heads_ss_ytna.npy')[0][:][:]           # load truth heads file
+    trueflows_ss_ytna=np.load(stakeholder+'_truth_strflow_ss_ytna.npy')[:]               # load truth flows file 
     # create array to record truth values                                      
     data_value = np.zeros(Ncomparisons)                                                           
     # Record truth value for each comparison depending on basis
@@ -718,9 +718,16 @@ def cull_lowL_models(L, dict_lowL_options, rmse, modelBehavior, cullmodels, cull
 #         run_params = np.delete(run_params, excludemodels[i],axis=0)                             # remove model names from list, too 
 
 # %%
-def calculateUtility(moc_limit, moc_comparison, metric):
+def calculateUtility(moc_limit, moc_comparison, moc_basis, metric):
     # set variables
-    u_factor = 0.8                      # set utility variance
+    if moc_basis == 2:
+        u_factor = 0.8               # set utility variance
+    elif moc_basis == 3:
+        u_factor = 0.1
+    elif moc_basis == 4:
+        u_factor = 0.9
+    else:
+        u_factor = 0.8             # throwaway value because I hope I don't use 0 or 1 bases
     u_var    = u_factor * moc_limit     # calculate variance of utility threshold
     u_range  = 2 * u_var                # calculate range of utility thresholds
     u_LL     = moc_limit - u_var        # lower threshold of utility
@@ -771,7 +778,7 @@ def assess_MOCs(dict_MOC_crit, cullmodels, cullmodels_counter, allflows_ss, allh
         else:
             metric = dd[:, moc_row, moc_column]
         # calculate utility
-        utility = calculateUtility(moc_limit, moc_comparison, metric)
+        utility = calculateUtility(moc_limit, moc_comparison, moc_basis, metric)
         # advance counter +1
         cullmodels_counter=cullmodels_counter+1
         # store data used to check (non)behavioral status
