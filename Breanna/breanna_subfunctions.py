@@ -451,7 +451,7 @@ def compileLikelihoodData(cullmodels, cullmodels_counter, dict_L_criteria, num_d
                 s = scenario[in_time]                                   # set value for scenario ('ntna','ytna','ytya')
                 # extract comparison value based on basis (flow/head)
                 if in_basis == 0:                                       # streamflow, basis = 0
-                    data2check = allflows_ss[s][jj][in_row][in_col]
+                    data2check = allflows_ss[s][jj][in_col]
                 else:                                                   # head, basis = 1
                     data2check = allheads_ss[s][jj][in_row][in_col]
                 # append comparison value according to above criteria to cullmodels array
