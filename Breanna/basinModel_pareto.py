@@ -64,6 +64,7 @@ for j, ax in enumerate(axs):
         # ax.set_ylabel('Utility')
         ax.set_title('{} truth model {}'.format(truth_sh, err))
         ax.grid(True)
+        ax.invert_yaxis()
 
 # only one legend and x label
 ax.legend(); ax.set_xlabel('RMSE', fontweight='bold', fontsize=14) 
@@ -170,35 +171,5 @@ for i in range(len(env_MOCs)):
 print(townCount, 'unique Town MOCs')
 print(agCount,   'unique Ag MOCs')
 print(envCount,  'unique Env MOCs')
-# %%
-import matplotlib.pyplot as plt
-import numpy as np
-
-# Generate sample data
-x = np.linspace(0, 2*np.pi, 100)
-datasets = [
-    [np.sin(x), np.sin(2*x), np.sin(3*x)],
-    [np.cos(x), np.cos(2*x), np.cos(3*x)],
-    [np.tan(x), np.tan(2*x), np.tan(3*x)]
-]
-
-# Create the figure and subplots
-fig, axs = plt.subplots(3, 1, figsize=(8, 10))
-
-# Iterate over each subplot and plot the datasets
-for i, ax in enumerate(axs):
-    for dataset in datasets[i]:
-        ax.plot(x, dataset)
-
-    # Set labels and title for each subplot
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_title('Plot {}'.format(i+1))
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Display the plot
-plt.show()
 
 # %%
