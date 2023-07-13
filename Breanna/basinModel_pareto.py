@@ -10,7 +10,7 @@ likelihood_filepath = '\\6.22_likelihood'
 os.chdir(og_filepath+likelihood_filepath)
 
 # determine if analysis includes error
-error_flag = False
+error_flag = True
 
 # adds error or removes it depending on above flag
 if error_flag == True:
@@ -24,9 +24,9 @@ tuple_mk   = ( 'ro',   'gv', 'bd')
 rmse_col = 16; util_col = 20; like_col = 18
 
 # create figure and select settings
-fig, axs = plt.subplots(3, 1, figsize=(16, 20))
+fig, axs = plt.subplots(3, 1, figsize=(12, 15))
 fig.set_facecolor('whitesmoke')
-plt.suptitle('Pareto front for all stakeholder across truth models', fontsize=20)
+plt.suptitle('Pareto front for all stakeholder across truth models', fontsize=18)
 fig.supylabel('Utility',fontweight='bold', fontsize=14)
 
 # run through all truth models
