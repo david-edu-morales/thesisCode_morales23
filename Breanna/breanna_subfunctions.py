@@ -363,7 +363,7 @@ def nonbehavioralModels(runnumbers, allheads_ss, maxdwt_ss, allflows_ss, dd, beh
 
     Nmodels = np.shape(runnumbers)[0]
 
-    cullmodels=np.zeros((Nmodels,50))                   # store values used to assess (non)behavioural and likelihood to check process
+    cullmodels=np.zeros((Nmodels,100))                   # store values used to assess (non)behavioural and likelihood to check process
     cullmodels_counter=-1
 
     # determine number of criteria to that have been applied
@@ -1039,14 +1039,14 @@ def run_overlap(allheads_ss, allflows_ss, allleaks_ss, mocBehavior, L, scenario)
                 # find higher minimum value between all (non)MOCs
                 mincutoff = max(min(moc_data[:,i,j]), min(non_data[:,i,j]))
                 # find MOCs with predictions WITHIN overlap
-                moc_mask = 1 - (1 * (moc_data[:,i,j] > maxcutoff) + 1 * (moc_data[:,i,j] < mincutoff))
+                moc_mask = 1 - (1 * (moc_data[:,i,j] >= maxcutoff) + 1 * (moc_data[:,i,j] <= mincutoff))
                 # find nonMOCs with predictions WITHIN overlap
-                non_mask = 1 - (1 * (non_data[:,i,j] > maxcutoff) + 1 * (non_data[:,i,j] < mincutoff))
+                non_mask = 1 - (1 * (non_data[:,i,j] >= maxcutoff) + 1 * (non_data[:,i,j] <= mincutoff))
                 # sum likelihoods of models in overlap
                 overlap[i,j] = np.sum(moc_L * moc_mask) + np.sum(nonmoc_L * non_mask)
                 # an overalp of 1 generally occurs because all models give the same value
                 # ...a fixed head boundary or cut out corner
-                overlap[overlap == 1] = np.nan
+                overlap[overlap >= 0.99] = np.nan
         
         heads_overlap.append(overlap)
     
