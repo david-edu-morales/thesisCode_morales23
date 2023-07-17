@@ -32,6 +32,7 @@ os.chdir(og_filepath+likelihood_filepath)
 # =======================================================================================
 # determine if analysis includes error
 error_flag = True
+ten_best_flag = False
 
 # adds error or removes it depending on above flag
 if error_flag == True:
@@ -44,8 +45,8 @@ tuple_sh = ('env', 'town', 'ag')
 tuple_mk = ( 'ro',   'gv', 'bd')
 tuple_pa = ('ro-',  'gv-','bd-')
 
-# rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'
-rmse_col = 64; util_col = 68; like_col = 18; errorfile = 'Error30'
+rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'
+# rmse_col = 64; util_col = 68; like_col = 18; errorfile = 'Error30'
 
 # create figure and select settings
 fig, axs = plt.subplots(3, 1, figsize=(12, 15))
@@ -69,29 +70,33 @@ for j, ax in enumerate(axs):
         ag_cullmodels = np.loadtxt("ag_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
                                     delimiter=",",
                                     dtype=float)
+        
         # pack cullmodels into tuple
         tuple_cull = (env_cullmodels, town_cullmodels, ag_cullmodels)
         # create dictionary of stakeholder cullmodels with their names as keys
         dict_cullmodels = dict(zip(tuple_sh, tuple_cull))
 
-        # select marker setting
+        # select marker setting for data and pareto front
         mk = tuple_mk[i]; pa = tuple_pa[i]
 
         # pull values from dictionaries
         rmse    = dict_cullmodels[sh][:, rmse_col]
         utility = dict_cullmodels[sh][:, util_col]
-        lklhd   = dict_cullmodels[sh][:, like_col]
+
+        # select 10 best models (optional)
+        if ten_best_flag == True:
+            sorted_data = sorted(zip(rmse, utility))
+            rmse, utility = zip(*sorted_data[:10])
 
         # Pareto front
         pareto_rmse, pareto_util = paretoFront(rmse, utility)
-
         # plot coordinates
         ax.plot(rmse, utility, mk, label=sh)
+        # plot pareto front
         ax.plot(pareto_rmse, pareto_util, pa)
-        # plt.plot(lklhd, utility, mk, label=sh)
-        # ax.set_ylabel('Utility')
+        # plot settings
         ax.set_title('{} truth model {}'.format(truth_sh, err))
-        ax.grid(True)
+        ax.grid(True); ax.set_ylim(-0.05,1.05)
         if j == 1:
             ax.legend(loc='center left', fontsize=14)
         ax.invert_xaxis()
@@ -108,7 +113,7 @@ plt.show()
 # ===================== ORIGINAL CODE (DON'T CHANGE) ====================================
 # =======================================================================================
 # set stakeholder truth model and determine if analysis includes error
-truth_sh = 'env'
+truth_sh = 'town'
 error_flag = True
 
 # adds error or removes it depending on above flag
@@ -118,13 +123,13 @@ else:
     neg = 'no'; err = ''
 
 # Load files and define sh cullmodels depending on truth model and error
-env_cullmodels = np.loadtxt("env_{}Error30-{}_cullmodels.csv".format(neg,truth_sh),
+env_cullmodels = np.loadtxt("env_{}downsamp-{}_cullmodels.csv".format(neg,truth_sh),
                             delimiter=",",
                             dtype=float)
-town_cullmodels = np.loadtxt("town_{}Error30-{}_cullmodels.csv".format(neg,truth_sh),
+town_cullmodels = np.loadtxt("town_{}downsamp-{}_cullmodels.csv".format(neg,truth_sh),
                             delimiter=",",
                             dtype=float)
-ag_cullmodels = np.loadtxt("ag_{}Error30-{}_cullmodels.csv".format(neg,truth_sh),
+ag_cullmodels = np.loadtxt("ag_{}downsamp-{}_cullmodels.csv".format(neg,truth_sh),
                             delimiter=",",
                             dtype=float)
 
@@ -159,6 +164,7 @@ for i in range(3):
     # plt.plot(lklhd, utility, mk, label=sh)
     plt.xlabel('RMSE'); plt.ylabel('Utility')
     plt.title('Pareto Front for all stakeholders\n{} truth model {}'.format(truth_sh,err))
+    plt.invert_xaxis()
     plt.grid(True); plt.legend()#; plt.gca().invert_yaxis()
 
 plt.show()
@@ -188,18 +194,16 @@ print(agCount,   'unique Ag MOCs')
 print(envCount,  'unique Env MOCs')'''
 
 # %%
+# ======================== LOGISTITC REGRESSION MODEL ===================================
+# =======================================================================================
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-# Sample data
+# Collect data
 X = env_cullmodels[:,3:9]
 y = env_cullmodels[:,69]
-
-# Convert data to NumPy arrays
-# X = np.array(observations)  # Observations as the independent variables
-# y = np.array(utility)       # Utility as the dependent variable
 
 # Split data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -221,9 +225,9 @@ intercept = logreg.intercept_
 print("Coefficients:", coefficients)
 print("Intercept:", intercept)
 
-
 # %%
-# Logistic regression prediction use:
+# ========================== PLOT OBSERVATIONS PULLED FROM LOG-REG MODEL ================
+# =======================================================================================
 # p = 1 / (1 + exp(-(intercept + coef1 * x1 + coef2 * x2 + ...)))
 # looking at MOCs
 # filter models based on moc flag
@@ -255,23 +259,80 @@ plt.legend()
 plt.show()
 
 # %%
-rmse = env_cullmodels[:, 64]
-utility = env_cullmodels[:, 68]
+# ============================== EXAMPLE UTILITY GRAPH ==================================
+u1 = [1, 1, 1, 0.8, 0.6, 0.4, 0.2, 0, 0, 0]
+u2 = u1[::-1]
+u3 = np.ones(10) * 0.5
+x1 = np.linspace(0, 5, endpoint=True, num=10)
 
-sorted_data = sorted(zip(rmse,utility))
-sorted_rmse, sorted_utility = zip(*sorted_data)
-
-pareto_util = [sorted_utility[0]]
-pareto_rmse = [sorted_rmse[0]]
-
-for i in range(len(sorted_utility)):
-    if sorted_utility[i] <= pareto_util[-1]:
-        pareto_util.append(sorted_utility[i])
-        pareto_rmse.append(sorted_rmse[i])
-plt.figure(figsize=(12,5))
-plt.plot(pareto_rmse, pareto_util, 'ro-')
-
+plt.figure(facecolor='whitesmoke')
+plt.title('Utility of Predicted Outcomes')
+plt.plot(x1, u1, 'go-', label='greater_than')
+plt.plot(x1, u2, 'bv-', label='less_than')
+plt.plot(x1, u3, 'r:', label='MOC_threshold')
+plt.legend(loc='center right'); plt.grid(True); 
+plt.ylabel('Utility', fontweight='bold'); plt.xlabel('Metric', fontweight='bold')
+plt.plot()
 # %%
+# ============================= STAKEHOLDER UTILITY GRAPHS ==============================
+# =======================================================================================
+moc_basis_list = [2,4,3]
+moc_limit_list = [75,1,70]
+moc_compa_list = [1,0,1]
+sh_list = ['env', 'town', 'ag']
+mk_list = ['ro-',  'gv-','bd-']
+metric_list = ['streamflow (m3/day)', 'drawdown (m)', 'hydraulic head (m)']
+
+fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+fig.set_facecolor('whitesmoke')
+# plt.suptitle('Stakeholder utility functions', fontsize=16)
+fig.supylabel('Utility',fontweight='bold', fontsize=14)
+
+# run through all truth models
+for i, ax in enumerate(axs):
+    moc_basis = moc_basis_list[i]
+    moc_limit = moc_limit_list[i]
+    moc_compa = moc_compa_list[i]
+    metric    = metric_list[i]
+
+    sh = sh_list[i]; mk = mk_list[i]
+
+    if moc_basis == 2:
+        u_factor = 0.8               # set utility variance
+    elif moc_basis == 3:
+        u_factor = 0.1
+    elif moc_basis == 4:
+        u_factor = 0.9
+    else:
+        u_factor = 0.8             # throwaway value because I hope I don't use 0 or 1 bases
+    u_var    = u_factor * moc_limit     # calculate variance of utility threshold
+    u_range  = 2 * u_var                # calculate range of utility thresholds
+    u_LL     = moc_limit - u_var        # lower threshold of utility
 
 
+    if moc_basis == 3:
+        x = np.linspace(0.8, 1.2, num=20) * moc_limit
+    else:
+        x = np.linspace(0,2, num = 20) * moc_limit
 
+    u2 = np.ones(20) * 0.5
+
+    # first utility
+    u_norm = (x - u_LL)/u_range
+
+    if moc_compa == 0:
+        utility = 1 - u_norm
+    if moc_compa == 1:
+        utility = u_norm
+
+    utility[utility < 0] = 0
+    utility[utility > 1] = 1
+
+    ax.plot(x, utility, mk, label=sh)
+    ax.plot(x, u2, 'm:')
+    ax.set_xlabel(metric)
+    ax.set_title(sh)
+    ax.grid(True)
+plt.tight_layout()
+plt.show()
+# %%
