@@ -108,6 +108,99 @@ plt.tight_layout()
 fig.subplots_adjust(top=0.95)
 plt.show()
         
+# %%
+# ============================== CUMULATIVE LIKELIHOOD RMSE/UTILITY GRAPHS ==============
+# =======================================================================================
+# determine if analysis includes error
+error_flag = True
+downsampled_flag = True
+
+# adds error or removes it depending on above flag
+if error_flag == True:
+    neg = ''; err = 'w/ error'
+    # Select between full/downsampled error analyses
+    if downsampled_flag == False:
+        rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+    else:
+        rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+else:
+    neg = 'no'; err = ''; obs =''
+    # Select between full/downsampled error analyses
+    if downsampled_flag == False:
+        rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+    else:
+        rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+
+# pack stakeholder names/marker options into tuple
+tuple_sh = ('env', 'town', 'ag')    # sh name
+tuple_mk = ( 'r-',   'g-', 'b-')    # sh marker options
+tuple_pa = ('ro-',  'gv-','bd-')    # pareto marker options
+
+
+
+# create figure and select settings
+fig, axs = plt.subplots(3, 1, figsize=(12, 15))
+fig.set_facecolor('whitesmoke')
+plt.suptitle('Cumulative likelihood of outcomes across truth models', fontsize=18)
+fig.supylabel('Cumulative Likelihood',fontweight='bold', fontsize=14)
+
+# run through all truth models
+for j, ax in enumerate(axs):
+    truth_sh = tuple_sh[j]    
+
+# run through all stakeholder perspectives for each truth model
+    for i, sh in enumerate(tuple_sh):
+        # Load files and define sh cullmodels depending on truth model and error
+        env_cullmodels = np.loadtxt("env_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                    delimiter=",",
+                                    dtype=float)
+        town_cullmodels = np.loadtxt("town_{}{}-{}_cullmodels.csv".format(neg, errorfile, truth_sh),
+                                    delimiter=",",
+                                    dtype=float)
+        ag_cullmodels = np.loadtxt("ag_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                    delimiter=",",
+                                    dtype=float)
+        
+        # pack cullmodels into tuple
+        tuple_cull = (env_cullmodels, town_cullmodels, ag_cullmodels)
+        # create dictionary of stakeholder cullmodels with their names as keys
+        dict_cullmodels = dict(zip(tuple_sh, tuple_cull))
+
+        # select marker setting for data and pareto front
+        mk = tuple_mk[i]; pa = tuple_pa[i]
+
+        # pull values from dictionaries
+        likelihood = dict_cullmodels[sh][:, like_col]
+        utility    = dict_cullmodels[sh][:, util_col]
+
+        # prep data for cumulative likelihood distribution function
+        sorted_indices    = np.argsort(utility)
+        sorted_likelihood = likelihood[sorted_indices]
+        sorted_utility    = utility[sorted_indices]
+
+        # Calculate cumulative likelihood
+        cumulative_likelihood = np.cumsum(sorted_likelihood) / np.sum(sorted_likelihood)
+        # add MOC threshold limit
+        x = np.ones(10) * 0.5
+        y = np.linspace(0, 1, endpoint=True, num=10)
+
+        # plot coordinates
+        ax.plot(sorted_utility, cumulative_likelihood, mk, label=sh)
+        ax.plot(x, y, 'm:')
+
+        # plot settings
+        ax.set_title('{} {} truth model {}'.format(obs, truth_sh, err))
+        ax.grid(True); ax.set_ylim(-0.05,1.05)
+        if j == 1:
+            ax.legend(loc='center left', fontsize=14)
+
+# only one legend and x label
+ax.set_xlabel('Utility', fontweight='bold', fontsize=14) 
+
+plt.tight_layout()
+fig.subplots_adjust(top=0.95)
+plt.show()
+
 
 # %%
 # ===================== ORIGINAL CODE (DON'T CHANGE) ====================================
