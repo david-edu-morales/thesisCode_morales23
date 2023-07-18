@@ -30,9 +30,11 @@ os.chdir(og_filepath+likelihood_filepath)
 # %%
 # ================== CREATE THREE PLOT FIGURE FOR ALL TRUTH MODELS ======================
 # =======================================================================================
-# determine if analysis includes error
-error_flag = True
 ten_best_flag = False
+
+# adds error or removes it depending on above flag
+downsampled_flag = False
+error_flag = True
 
 # adds error or removes it depending on above flag
 if error_flag == True:
@@ -40,19 +42,25 @@ if error_flag == True:
 else:
     neg = 'no'; err = ''
 
+# Select between full/downsampled error analyses
+if downsampled_flag == False:
+    rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+else:
+    rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+
 # pack stakeholder names/marker options into tuple
 tuple_sh = ('env', 'town', 'ag')
 tuple_mk = ( 'ro',   'gv', 'bd')
 tuple_pa = ('ro-',  'gv-','bd-')
 
-rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'
+# rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'
 # rmse_col = 64; util_col = 68; like_col = 18; errorfile = 'Error30'
 
 # create figure and select settings
 fig, axs = plt.subplots(3, 1, figsize=(12, 15))
 fig.set_facecolor('whitesmoke')
-plt.suptitle('Pareto front for all stakeholder across truth models', fontsize=18)
-fig.supylabel('Utility',fontweight='bold', fontsize=14)
+# plt.suptitle('Pareto front for all stakeholder across truth models', fontsize=18)
+fig.supylabel('Utility',fontweight='bold', fontsize=18)
 
 # run through all truth models
 for j, ax in enumerate(axs):
@@ -86,7 +94,7 @@ for j, ax in enumerate(axs):
         # select 10 best models (optional)
         if ten_best_flag == True:
             sorted_data = sorted(zip(rmse, utility))
-            rmse, utility = zip(*sorted_data[:10])
+            rmse, utility = zip(*sorted_data[:20])
 
         # Pareto front
         pareto_rmse, pareto_util = paretoFront(rmse, utility)
@@ -95,54 +103,48 @@ for j, ax in enumerate(axs):
         # plot pareto front
         ax.plot(pareto_rmse, pareto_util, pa)
         # plot settings
-        ax.set_title('{} truth model {}'.format(truth_sh, err))
+        ax.set_title('{} {} truth model {}'.format(obs, truth_sh, err), fontsize=18)
         ax.grid(True); ax.set_ylim(-0.05,1.05)
         if j == 1:
-            ax.legend(loc='center left', fontsize=14)
-        ax.invert_xaxis()
+            ax.legend(loc='center left', fontsize=18)
+        ax.invert_xaxis(); ax.tick_params(labelsize=15)
 
 # only one legend and x label
-ax.set_xlabel('RMSE', fontweight='bold', fontsize=14) 
+ax.set_xlabel('RMSE', fontweight='bold', fontsize=18) 
 
 plt.tight_layout()
 fig.subplots_adjust(top=0.95)
 plt.show()
-        
+
 # %%
 # ============================== CUMULATIVE LIKELIHOOD RMSE/UTILITY GRAPHS ==============
 # =======================================================================================
 # determine if analysis includes error
 error_flag = True
-downsampled_flag = True
+downsampled_flag = False
 
 # adds error or removes it depending on above flag
 if error_flag == True:
     neg = ''; err = 'w/ error'
-    # Select between full/downsampled error analyses
-    if downsampled_flag == False:
-        rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
-    else:
-        rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
 else:
-    neg = 'no'; err = ''; obs =''
-    # Select between full/downsampled error analyses
-    if downsampled_flag == False:
-        rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
-    else:
-        rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+    neg = 'no'; err = ''
+
+# Select between full/downsampled error analyses
+if downsampled_flag == False:
+    rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+else:
+    rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
 
 # pack stakeholder names/marker options into tuple
 tuple_sh = ('env', 'town', 'ag')    # sh name
 tuple_mk = ( 'r-',   'g-', 'b-')    # sh marker options
 tuple_pa = ('ro-',  'gv-','bd-')    # pareto marker options
 
-
-
 # create figure and select settings
 fig, axs = plt.subplots(3, 1, figsize=(12, 15))
 fig.set_facecolor('whitesmoke')
-plt.suptitle('Cumulative likelihood of outcomes across truth models', fontsize=18)
-fig.supylabel('Cumulative Likelihood',fontweight='bold', fontsize=14)
+# plt.suptitle('Cumulative likelihood of outcomes across truth models', fontsize=18)
+fig.supylabel('Cumulative Likelihood',fontweight='bold', fontsize=18)
 
 # run through all truth models
 for j, ax in enumerate(axs):
@@ -189,13 +191,13 @@ for j, ax in enumerate(axs):
         ax.plot(x, y, 'm:')
 
         # plot settings
-        ax.set_title('{} {} truth model {}'.format(obs, truth_sh, err))
-        ax.grid(True); ax.set_ylim(-0.05,1.05)
+        ax.set_title('{} {} truth model {}'.format(obs, truth_sh, err), fontsize=18)
+        ax.grid(True); ax.set_ylim(-0.05,1.05); ax.tick_params(labelsize=15)
         if j == 1:
-            ax.legend(loc='center left', fontsize=14)
+            ax.legend(loc='center left', fontsize=18)
 
 # only one legend and x label
-ax.set_xlabel('Utility', fontweight='bold', fontsize=14) 
+ax.set_xlabel('Utility', fontweight='bold', fontsize=18) 
 
 plt.tight_layout()
 fig.subplots_adjust(top=0.95)
@@ -366,6 +368,7 @@ plt.plot(x1, u3, 'r:', label='MOC_threshold')
 plt.legend(loc='center right'); plt.grid(True); 
 plt.ylabel('Utility', fontweight='bold'); plt.xlabel('Metric', fontweight='bold')
 plt.plot()
+
 # %%
 # ============================= STAKEHOLDER UTILITY GRAPHS ==============================
 # =======================================================================================
@@ -427,5 +430,209 @@ for i, ax in enumerate(axs):
     ax.set_title(sh)
     ax.grid(True)
 plt.tight_layout()
+plt.show()
+# %%
+# ======================= HISTOGRAMS OF PREDICTION OF INTEREST ==========================
+# =======================================================================================
+# determine if analysis includes error
+error_flag = True
+downsampled_flag = False
+
+# adds error or removes it depending on above flag
+if error_flag == True:
+    neg = ''; err = 'w/ error'
+else:
+    neg = 'no'; err = ''
+
+# Select between full/downsampled error analyses
+if downsampled_flag == False:
+    rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+else:
+    rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+
+# pack stakeholder names/marker options into tuple
+tuple_sh = ('env', 'town', 'ag')    # sh name
+tuple_mk = ( 'r',   'g', 'b')    # sh marker options
+tuple_ob = ('streamflow (m3/day)',  'drawdown (m)','hydraulic head (m)')    # pareto marker options
+
+metric_col = 67
+# create figure and select settings
+fig, axs = plt.subplots(3, 1, figsize=(12, 15))
+fig.set_facecolor('whitesmoke')
+plt.suptitle('Frequency distribution of model RMSE', fontsize=18)
+fig.supylabel('Count',fontweight='bold', fontsize=14)
+
+# run through all stakeholder perspectives for each truth model
+for i, ax in enumerate(axs):
+    sh = tuple_sh[i]
+
+    # Load files and define sh cullmodels depending on truth model and error
+    env_cullmodels = np.loadtxt("env_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    town_cullmodels = np.loadtxt("town_{}{}-{}_cullmodels.csv".format(neg, errorfile, truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    ag_cullmodels = np.loadtxt("ag_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    
+    # pack cullmodels into tuple
+    tuple_cull = (env_cullmodels, town_cullmodels, ag_cullmodels)
+    # create dictionary of stakeholder cullmodels with their names as keys
+    dict_cullmodels = dict(zip(tuple_sh, tuple_cull))
+
+    # select marker setting for data and pareto front
+    mk = tuple_mk[i]; ob = tuple_ob[i]
+
+    # pull values from dictionaries
+    metric = dict_cullmodels[sh][:, util_col]
+
+    # add MOC threshold limit
+    # x = np.ones(10) * 0.5
+    # y = np.linspace(0, 1, endpoint=True, num=10)
+
+    # plot coordinates
+    ax.hist(metric, color = mk, bins = 100, label=ob)
+
+    # plot settings
+    ax.set_title('{}\'s prediction of interest'.format(sh))
+    ax.grid(True); ax.tick_params(labelsize=15);# ax.legend()
+
+    # prediction stats
+    print(sh, ' avg. value:', np.round(np.mean(metric), 2))
+    print(sh, ' median value:', np.round(np.median(metric), 2))
+    print(sh, ' standard deviation:', np.round(np.std(metric), 2))
+
+# only one legend and x label
+ax.set_xlabel('Utility', fontweight='bold', fontsize=14) 
+
+plt.tight_layout()
+fig.subplots_adjust(top=0.95)
+plt.show()
+# %%
+# ========================== COUNT MODEL BEHAVIORS ======================================
+# =======================================================================================
+# determine if analysis includes error
+error_flag = True
+downsampled_flag = False
+
+# adds error or removes it depending on above flag
+if error_flag == True:
+    neg = ''; err = 'w/ error'
+else:
+    neg = 'no'; err = ''
+
+# Select between full/downsampled error analyses
+if downsampled_flag == False:
+    rmse_col = 64; util_col = 68; like_col = 66; moc_col = 70
+    errorfile = 'Error30'; obs = 'full'
+else:
+    rmse_col = 16; util_col = 20; like_col = 18; moc_col = 19
+    errorfile = 'Error2'; obs = 'downsampled'
+
+# pack stakeholder names/marker options into tuple
+tuple_sh = ('env', 'town', 'ag')    # sh name
+
+
+# run through all stakeholder perspectives for each truth model
+for i, ax in enumerate(axs):
+    sh = tuple_sh[i]
+
+    # Load files and define sh cullmodels depending on truth model and error
+    env_cullmodels = np.loadtxt("env_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    town_cullmodels = np.loadtxt("town_{}{}-{}_cullmodels.csv".format(neg, errorfile, truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    ag_cullmodels = np.loadtxt("ag_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    
+    # pack cullmodels into tuple
+    tuple_cull = (env_cullmodels, town_cullmodels, ag_cullmodels)
+    # create dictionary of stakeholder cullmodels with their names as keys
+    dict_cullmodels = dict(zip(tuple_sh, tuple_cull))
+
+    # select marker setting for data and pareto front
+    mk = tuple_mk[i]; ob = tuple_ob[i]
+
+    # pull values from dictionaries
+    moc = dict_cullmodels[sh][:, moc_col]
+
+    # sum metrics
+    moc_count = int(np.sum(moc))
+    behavioralModels    = len(moc)
+    nonBehavioralModels = 500 - behavioralModels
+    
+    print('====== {}\'s perspective ====='.format(sh))
+    print('Models of Concern: {}'.format(moc_count))
+print('*****************************')
+print('Behavioral models: {}'.format(behavioralModels))
+print('Nonbehavioral models: {}'.format(nonBehavioralModels))
+# %%
+# ======================= HISTOGRAMS OF RMSE ==========================
+# =======================================================================================
+# determine if analysis includes error
+error_flag = False
+downsampled_flag = True
+
+# adds error or removes it depending on above flag
+if error_flag == True:
+    neg = ''; err = 'w/ error'
+else:
+    neg = 'no'; err = ''
+
+# Select between full/downsampled error analyses
+if downsampled_flag == False:
+    rmse_col = 64; util_col = 68; like_col = 66; errorfile = 'Error30'; obs = 'full'
+else:
+    rmse_col = 16; util_col = 20; like_col = 18; errorfile = 'Error2'; obs = 'downsampled'
+
+# pack stakeholder names/marker options into tuple
+tuple_sh = ('env', 'town', 'ag')    # sh name
+tuple_mk = ( 'r',   'g', 'b')    # sh marker options
+tuple_ob = ('streamflow (m3/day)',  'drawdown (m)','hydraulic head (m)')    # pareto marker options
+
+metric_col = 67
+# create figure and select settings
+fig, axs = plt.subplots(3, 1, figsize=(12, 15))
+fig.set_facecolor('whitesmoke')
+# plt.suptitle('Frequency distribution of model RMSE', fontsize=18)
+fig.supylabel('Count',fontweight='bold', fontsize=18)
+
+# run through all stakeholder perspectives for each truth model
+for i, ax in enumerate(axs):
+    truth_sh = tuple_sh[i]
+
+    # Load files and define sh cullmodels depending on truth model and error
+    env_cullmodels = np.loadtxt("env_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    town_cullmodels = np.loadtxt("town_{}{}-{}_cullmodels.csv".format(neg, errorfile, truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    ag_cullmodels = np.loadtxt("ag_{}{}-{}_cullmodels.csv".format(neg,errorfile,truth_sh),
+                                delimiter=",",
+                                dtype=float)
+    
+    # pack cullmodels into tuple
+    tuple_cull = (env_cullmodels, town_cullmodels, ag_cullmodels)
+    # create dictionary of stakeholder cullmodels with their names as keys
+    dict_cullmodels = dict(zip(tuple_sh, tuple_cull))
+    # pull values from dictionaries
+    rmse = dict_cullmodels[sh][:, rmse_col]
+    # plot coordinates
+    ax.hist(rmse, color = 'grey', bins = 100, edgecolor='k')
+    # plot settings
+    ax.set_title('{} {} truth model {}'.format(obs, truth_sh, err), fontsize=18)
+    ax.grid(True); ax.tick_params(labelsize=16);# ax.legend()
+
+# only one legend and x label
+ax.set_xlabel('RMSE', fontweight='bold', fontsize=18) 
+
+plt.tight_layout()
+fig.subplots_adjust(top=0.95)
 plt.show()
 # %%
